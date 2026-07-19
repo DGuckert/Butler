@@ -1,0 +1,24 @@
+# Local SDK path, machine-specific
+local.properties
+
+# Build outputs
+*/build/
+build/
+*.apk
+*.aab
+
+# Gradle
+.gradle/
+gradle-app.setting
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystores (never commit signing keys)
+*.jks
+*.keystore

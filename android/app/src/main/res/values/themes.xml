@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.Butler" parent="android:Theme.Material.NoActionBar" />
+</resources>

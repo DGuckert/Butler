@@ -1,0 +1,18 @@
+# secrets / local config
+.env
+
+# runtime data — user-specific, not source
+*.db
+*.db-journal
+/music/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# backups / scratch
+*.bak
+*.bak.*
+status.md
