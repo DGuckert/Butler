@@ -1,8 +1,9 @@
 # Butler
 
-A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into
-a personal library, and stream it from a Spotify-style web UI — crossfade, queue,
-playlists, likes, and multi-user family accounts with invite codes.
+A self-hosted music server, in the same spirit as Jellyfin or Navidrome but built
+around `yt-dlp` instead of a media file library you already own. Download songs,
+organize them into a personal collection, and stream them back from a web UI or
+the native Android app, with playlists, likes, and multi-user family accounts.
 
 ## Features
 
@@ -14,6 +15,13 @@ playlists, likes, and multi-user family accounts with invite codes.
 - Optional "Daily Mix" generator: an LLM (via [OpenRouter](https://openrouter.ai))
   suggests songs based on your listening history, which are then resolved and
   downloaded automatically
+
+## Clients
+
+- **Web UI**: served directly by the backend, no separate setup needed.
+- **Android**: a native Kotlin/Compose client with background playback and
+  lock-screen controls, in [`android/`](android/). See its own
+  [README](android/README.md) for build instructions.
 
 ## Requirements
 
@@ -41,7 +49,7 @@ Then start the server:
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-Open `http://localhost:8080` and register the first account — it becomes the admin
+Open `http://localhost:8080` and register the first account. It becomes the admin
 and can generate invite codes for other users under `/admin`.
 
 ### Running as a service
@@ -68,10 +76,17 @@ or schedule it (cron / systemd timer) to run once a day.
 ## Notes
 
 - Downloaded audio lives in `music/` and the SQLite databases (`butler.db`,
-  `songs_meta.db`) are created at runtime — neither is tracked in git, since
+  `songs_meta.db`) are created at runtime. Neither is tracked in git, since
   they're local to your library.
 - Spotify integration is optional; leave the `SPOTIFY_*` variables blank to skip it.
 
+## Legal
+
+Butler downloads audio via `yt-dlp`, which is against YouTube's Terms of
+Service and, for most commercially released music, copyright law in most
+jurisdictions, personal-use downloading included. It's intended for a small,
+private household setup, not for redistribution. Use it accordingly.
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

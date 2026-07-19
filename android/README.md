@@ -41,8 +41,9 @@ address; this app is for day to day listening.
 - A running Butler server (see the main [README](../README.md) in the
   repository root for how to set one up)
 - Android 7.0 (API 24) or newer
-- Android Studio, or a command line setup with the Android SDK and JDK 17+,
-  if you want to build it yourself
+- To build it yourself: Android Studio, or a command line setup with the
+  Android SDK and JDK 17+ (the Gradle wrapper is checked in, so you don't
+  need Gradle installed separately)
 
 ## Connecting to your server
 
@@ -79,17 +80,11 @@ creating a `local.properties` file in this folder:
 sdk.dir=/path/to/your/android-sdk
 ```
 
-Then build a debug APK:
+Then build a debug APK with the checked-in wrapper, no separate Gradle
+install needed:
 
 ```bash
 ./gradlew assembleDebug
-```
-
-or, if you don't have the Gradle wrapper checked in yet, use a system
-install of Gradle 8.7:
-
-```bash
-gradle assembleDebug
 ```
 
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install
