@@ -26,3 +26,4 @@ services:
 
 volumes:
   butler_data:
+    name: butler_data

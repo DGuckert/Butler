@@ -7,19 +7,21 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#121212;--bg2:#181818;--bg3:#282828;--bg4:#333;--bg5:#3e3e3e;
-  --green:#1db954;--green2:#1ed760;--text:#fff;--muted:#a7a7a7;
+  --bg:#17140F;--bg2:#221D15;--bg3:#2B241A;--bg4:#3D3527;--bg5:#4A4030;
+  --green:#C89B3C;--green2:#DBAF4E;--text:#F0E6CF;--muted:#9B9484;
+  --danger:#C75B4A;--oxblood:#A5453A;
+  --font-display:Georgia,'Iowan Old Style','Palatino Linotype',serif;
   --sidebar-w:232px;--player-h:90px;--radius:4px;
 }
-body{background:#000;color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;overflow:hidden;user-select:none;font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;overflow:hidden;user-select:none;font-size:14px}
 input,textarea,select{user-select:text;-webkit-user-select:text}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:4px}
 
 /* ── Auth ── */
-#auth-screen{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:10px;background:linear-gradient(135deg,#0a0a1a,#1a0a2e)}
-.auth-logo{font-size:2rem;font-weight:800;margin-bottom:20px}
+#auth-screen{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:10px;background:linear-gradient(135deg,#17140F,#221D15)}
+.auth-logo{font-size:2rem;font-weight:800;margin-bottom:20px;font-family:var(--font-display)}
 .auth-logo span{color:var(--green)}
 #auth-screen input{width:300px;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .15s}
 #auth-screen input:focus{border-color:var(--text)}
@@ -29,7 +31,7 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 .btn-sm{padding:7px 16px;font-size:12px;border-radius:24px;border:none;cursor:pointer;font-weight:700;transition:all .15s;white-space:nowrap}
 .btn-outline{background:transparent;color:var(--text);border:1px solid var(--bg5)}
 .btn-outline:hover{border-color:var(--text)}
-#auth-error{color:#f15e6c;font-size:12px;height:16px}
+#auth-error{color:var(--danger);font-size:12px;height:16px}
 #auth-toggle{color:var(--muted);font-size:12px;margin-top:6px}
 #auth-toggle a{color:var(--text);cursor:pointer;text-decoration:underline}
 
@@ -40,7 +42,7 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 
 /* ── Sidebar ── */
 #sidebar{width:var(--sidebar-w);background:var(--bg2);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
-.sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0;font-family:var(--font-display)}
 .sidebar-logo span{color:var(--green)}
 .sidebar-section{padding:4px 8px;flex-shrink:0}
 .nav-btn{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;transition:color .1s,background .1s;white-space:nowrap}
@@ -59,9 +61,9 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .pl-thumb{width:40px;height:40px;border-radius:var(--radius);background:var(--bg4);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px}
 .pl-thumb img{width:100%;height:100%;object-fit:cover}
 .pl-info{min-width:0}
-.pl-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-display)}
 .pl-meta{font-size:11px;color:var(--muted);margin-top:1px}
-.shared-badge{font-size:10px;background:#1a3a2a;color:var(--green);padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
+.shared-badge{font-size:10px;background:#3A2E12;color:var(--green);padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
 
 /* ── Main ── */
 #main{flex:1;background:var(--bg2);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
@@ -80,17 +82,17 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 #user-dropdown.open{display:block;animation:fadeIn .1s ease}
 .dd-item{padding:10px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;transition:background .1s}
 .dd-item:hover{background:var(--bg4)}
-.dd-item.danger{color:#f15e6c}
+.dd-item.danger{color:var(--danger)}
 #content{flex:1;overflow-y:auto;min-height:0}
 .view{padding:20px 20px 120px;animation:fadeIn .18s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
 /* ── Hero ── */
-.view-hero{padding:20px;display:flex;align-items:flex-end;gap:20px;min-height:180px;flex-shrink:0;background:linear-gradient(180deg,#1e1e3e 0%,transparent 100%)}
+.view-hero{padding:20px;display:flex;align-items:flex-end;gap:20px;min-height:180px;flex-shrink:0;background:linear-gradient(180deg,#3A2E1A 0%,transparent 100%)}
 .view-hero-art{width:140px;height:140px;border-radius:var(--radius);background:var(--bg3);flex-shrink:0;box-shadow:0 8px 32px rgba(0,0,0,.5);object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:3rem;overflow:hidden}
 .view-hero-art img{width:100%;height:100%;object-fit:cover}
 .view-hero-info p.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
-.view-hero-info h1{font-size:clamp(1.2rem,4vw,2.2rem);font-weight:800;line-height:1.1;margin-bottom:6px}
+.view-hero-info h1{font-size:clamp(1.2rem,4vw,2.2rem);font-weight:800;line-height:1.1;margin-bottom:6px;font-family:var(--font-display)}
 .view-hero-info p.sub{color:var(--muted);font-size:13px}
 .hero-actions{display:flex;align-items:center;gap:14px;padding:14px 20px;flex-shrink:0}
 .play-all-btn{width:48px;height:48px;border-radius:50%;background:var(--green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .1s;flex-shrink:0}
@@ -98,8 +100,8 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .play-all-btn svg{margin-left:3px}
 .ghost-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;padding:4px 2px;transition:color .1s}
 .ghost-btn:hover,.ghost-btn.active{color:var(--text)}
-.ghost-btn.red{color:#f15e6c}
-.ghost-btn.red:hover{color:#ff7a7a}
+.ghost-btn.red{color:var(--danger)}
+.ghost-btn.red:hover{color:var(--danger)}
 
 /* ── Sort bar ── */
 .sort-bar{display:flex;align-items:center;gap:8px;padding:0 20px 12px;flex-wrap:wrap}
@@ -117,11 +119,11 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .song-card:hover .card-play{opacity:1;transform:translateY(0) scale(1)}
 .card-art{width:100%;aspect-ratio:1;background:var(--bg4);border-radius:var(--radius);margin-bottom:10px;position:relative;overflow:hidden}
 .card-art img{width:100%;height:100%;object-fit:cover;display:block}
-.card-art-fb{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--c1,#1a1a3e),var(--c2,#2a1a2e))}
+.card-art-fb{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--c1,#3D2817),var(--c2,#221208))}
 .card-play{position:absolute;bottom:6px;right:6px;width:38px;height:38px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(6px) scale(.9);transition:opacity .2s,transform .2s;box-shadow:0 4px 16px rgba(0,0,0,.5);border:none;cursor:pointer}
 .card-play:hover{background:var(--green2);transform:translateY(0) scale(1.06)!important}
 .card-play svg{margin-left:3px}
-.card-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.card-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;font-family:var(--font-display)}
 .card-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-badge{font-size:10px;color:var(--green);margin-top:3px;font-weight:600}
 
@@ -137,11 +139,11 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .s-num{color:var(--muted);text-align:center;font-size:14px;display:flex;align-items:center;justify-content:center}
 .s-play{display:none;align-items:center;justify-content:center;color:var(--green);font-size:13px}
 /* equaliser animation */
-.song-row.active.playing .s-play::after{content:'';display:inline-block;width:14px;height:14px;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='1' y='4' width='2' height='10' fill='%231db954'%3E%3Canimate attributeName='height' values='10;4;10' dur='.8s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='4;10;4' dur='.8s' repeatCount='indefinite'/%3E%3C/rect%3E%3Crect x='6' y='2' width='2' height='12' fill='%231db954'%3E%3Canimate attributeName='height' values='12;6;12' dur='.6s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='2;8;2' dur='.6s' repeatCount='indefinite'/%3E%3C/rect%3E%3Crect x='11' y='6' width='2' height='8' fill='%231db954'%3E%3Canimate attributeName='height' values='8;3;8' dur='.9s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='6;11;6' dur='.9s' repeatCount='indefinite'/%3E%3C/rect%3E%3C/svg%3E") no-repeat center;background-size:contain}
+.song-row.active.playing .s-play::after{content:'';display:inline-block;width:14px;height:14px;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='1' y='4' width='2' height='10' fill='%23c89b3c'%3E%3Canimate attributeName='height' values='10;4;10' dur='.8s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='4;10;4' dur='.8s' repeatCount='indefinite'/%3E%3C/rect%3E%3Crect x='6' y='2' width='2' height='12' fill='%23c89b3c'%3E%3Canimate attributeName='height' values='12;6;12' dur='.6s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='2;8;2' dur='.6s' repeatCount='indefinite'/%3E%3C/rect%3E%3Crect x='11' y='6' width='2' height='8' fill='%23c89b3c'%3E%3Canimate attributeName='height' values='8;3;8' dur='.9s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='6;11;6' dur='.9s' repeatCount='indefinite'/%3E%3C/rect%3E%3C/svg%3E") no-repeat center;background-size:contain}
 .s-info{display:flex;align-items:center;gap:10px;min-width:0}
 .s-thumb{width:36px;height:36px;border-radius:var(--radius);background:var(--bg4);flex-shrink:0;object-fit:cover}
 .s-text{min-width:0}
-.s-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-display)}
 .s-artist-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .s-artist{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s-dur{color:var(--muted);font-size:13px;text-align:right}
@@ -160,7 +162,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 #search-input:focus{background:var(--bg4)}
 .search-filter{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .sf-btn{background:var(--bg3);border:none;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;padding:6px 14px;border-radius:24px;transition:all .1s}
-.sf-btn.active{background:var(--text);color:#000}
+.sf-btn.active{background:var(--text);color:var(--bg)}
 
 /* ── Player ── */
 #player{height:var(--player-h);background:var(--bg2);border-top:1px solid #1a1a1a;display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
@@ -176,8 +178,8 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .ctrl{background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,transform .1s;padding:4px;border-radius:50%;width:30px;height:30px}
 .ctrl:hover{color:var(--text);transform:scale(1.1)}
 .ctrl.active{color:var(--green)}
-#btn-play{width:34px;height:34px;background:var(--text);border-radius:50%;color:#000;flex-shrink:0}
-#btn-play:hover{background:#e8e8e8;transform:scale(1.06)!important}
+#btn-play{width:34px;height:34px;background:var(--text);border-radius:50%;color:var(--bg);flex-shrink:0}
+#btn-play:hover{background:#F7F0DE;transform:scale(1.06)!important}
 #progress-row{display:flex;align-items:center;gap:8px;width:100%}
 .ptime{font-size:11px;color:var(--muted);min-width:34px;font-variant-numeric:tabular-nums}
 #ptime-end{text-align:right}
@@ -220,7 +222,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .ci{padding:9px 13px;border-radius:var(--radius);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;transition:background .1s;color:var(--text)}
 .ci:hover{background:var(--bg4)}
 .ci svg{width:15px;height:15px;flex-shrink:0;color:var(--muted)}
-.ci.red{color:#f15e6c}
+.ci.red{color:var(--danger)}
 .ci-sep{border:none;border-top:1px solid var(--bg4);margin:4px 0}
 .ci-sub{position:relative}
 .ci-sub-menu{position:absolute;left:100%;top:-4px;background:var(--bg3);border-radius:var(--radius);padding:4px;min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;max-height:240px;overflow-y:auto;z-index:1001}
@@ -228,7 +230,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 
 /* ── Pills / toasts ── */
 .pill{position:fixed;bottom:calc(var(--player-h) + 10px);left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;padding:8px 18px;border-radius:24px;z-index:50;pointer-events:none;white-space:nowrap}
-#dl-pill{background:var(--green);color:#000;display:none}
+#dl-pill{background:var(--green);color:var(--bg);display:none}
 #res-pill{background:var(--bg3);color:var(--text);border:1px solid var(--bg5);display:none}
 #toast{position:fixed;bottom:calc(var(--player-h)+56px);right:20px;background:var(--bg3);border-radius:var(--radius);padding:10px 16px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4);display:none;animation:fadeIn .2s ease;max-width:280px;z-index:60}
 
@@ -357,7 +359,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
     <div id="now-playing">
       <img id="now-art" src="" alt="">
       <div id="now-info">
-        <div id="now-title">—</div>
+        <div id="now-title">-</div>
         <div id="now-artist"></div>
       </div>
       <button id="now-like"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
@@ -376,7 +378,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
       <div id="progress-row">
         <span class="ptime" id="ptime-start">0:00</span>
         <div id="ptrack"><div id="pbar-buf"></div><div id="pfill" style="width:0%"></div></div>
-        <span class="ptime" id="ptime-end">—</span>
+        <span class="ptime" id="ptime-end">-</span>
       </div>
     </div>
     <div id="right-ctrl">
@@ -411,7 +413,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Paste a Spotify playlist URL or ID</p>
       <input id="sp-url" type="text" placeholder="https://open.spotify.com/playlist/…" style="pointer-events:all;user-select:text;-webkit-user-select:text">
       <label class="modal-check"><input type="checkbox" id="sp-shared"> Share with family</label>
-      <div id="sp-err" style="color:#f15e6c;font-size:12px;margin-bottom:10px"></div>
+      <div id="sp-err" style="color:var(--danger);font-size:12px;margin-bottom:10px"></div>
       <div class="modal-btns">
         <button class="btn btn-outline btn-sm" id="sp-cancel">Cancel</button>
         <button class="btn btn-green" id="sp-start">Import</button>
@@ -427,7 +429,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
       <div id="sp-done-actions" style="display:none;margin-top:14px">
         <div id="sp-errors-wrap" style="margin-bottom:12px;display:none">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px" id="sp-errors-label"></div>
-          <div id="sp-errors-list" style="font-size:11px;color:#f15e6c;max-height:80px;overflow-y:auto"></div>
+          <div id="sp-errors-list" style="font-size:11px;color:var(--danger);max-height:80px;overflow-y:auto"></div>
         </div>
         <div class="modal-btns">
           <button class="btn btn-outline btn-sm" onclick="document.getElementById('spotify-modal').style.display='none'">Close</button>
@@ -456,7 +458,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
     <input id="pw-current" type="password" placeholder="Current password">
     <input id="pw-new" type="password" placeholder="New password (min 6 chars)">
     <input id="pw-confirm" type="password" placeholder="Confirm new password">
-    <div id="pw-err" style="color:#f15e6c;font-size:12px;margin-bottom:10px"></div>
+    <div id="pw-err" style="color:var(--danger);font-size:12px;margin-bottom:10px"></div>
     <div class="modal-btns">
       <button class="btn btn-outline btn-sm" id="pw-cancel">Cancel</button>
       <button class="btn btn-green" id="pw-confirm-btn">Update</button>
@@ -506,10 +508,10 @@ let sortState={liked:'date',lib:'date',dlOnly:false};
 let searchFilter='all';
 let crossfadeNode=null,audioCtx=null;
 
-const PALS={a:['#1a3a5c','#0d2137'],b:['#3a1a5c','#1a0d37'],c:['#1a5c3a','#0d371a'],d:['#5c3a1a','#37200d'],e:['#5c1a3a','#370d20'],f:['#1a4a5c','#0d2a37'],g:['#4a5c1a','#2a370d'],h:['#5c4a1a','#372a0d'],i:['#1a5c4a','#0d372a'],j:['#5c1a4a','#370d2a'],k:['#2a1a5c','#150d37'],l:['#1a5c2a','#0d3715'],m:['#5c2a1a','#371500'],n:['#1a2a5c','#0d1537'],o:['#5c5a1a','#37350d'],p:['#4a1a5c','#2a0d37'],q:['#1a5c5a','#0d3735'],r:['#5c1a1a','#370d0d'],s:['#1a4a3a','#0d2a20'],t:['#3a4a1a','#202a0d'],u:['#4a3a1a','#2a200d'],v:['#1a3a4a','#0d202a'],w:['#3a1a4a','#200d2a'],x:['#4a1a3a','#2a0d20'],y:['#1a4a4a','#0d2a2a'],z:['#4a4a1a','#2a2a0d']};
+const PALS={a:['#8a6a2a','#3d2e12'],b:['#a5453a','#4a1f1a'],c:['#6a7a3a','#2e3617'],d:['#b0783a','#4d3016'],e:['#8a3a4a','#3d1a20'],f:['#7a8a5a','#353d28'],g:['#c89b3c','#5c4419'],h:['#9a5a2a','#432712'],i:['#6a4a3a','#2e211a'],j:['#a56a4a','#4a2f20'],k:['#5a6a4a','#282e20'],l:['#8a5a5a','#3d2828'],m:['#7a5a2a','#352712'],n:['#4a6a6a','#20302e'],o:['#a58a4a','#4a3d20'],p:['#6a4a5a','#2e2028'],q:['#5a7a6a','#28352e'],r:['#8a4a3a','#3d211a'],s:['#7a6a4a','#352e20'],t:['#4a5a3a','#20281a'],u:['#9a7a5a','#433528'],v:['#4a5a6a','#20282e'],w:['#6a3a4a','#2e1a20'],x:['#8a6a4a','#3d3020'],y:['#5a6a5a','#282e28'],z:['#7a5a3a','#352817']};
 const ICONS=[`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><rect x="2" y="8" width="20" height="12" rx="2"/><circle cx="12" cy="14" r="2"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3v5zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3v5z"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><path d="M12 2a3 3 0 013 3v7a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v3M8 22h8"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`];
 
-function pal(s){const k=(s||'a')[0].toLowerCase();return PALS[k]||['#1a1a3e','#2a1a2e']}
+function pal(s){const k=(s||'a')[0].toLowerCase();return PALS[k]||['#3D2817','#221208']}
 
 async function api(m,p,b){
   const h={'Content-Type':'application/json'};
@@ -519,7 +521,7 @@ async function api(m,p,b){
   if(!r.ok)throw new Error(d.detail||'Error');
   return d;
 }
-function fmt(s){if(!s&&s!==0)return'—';s=Math.floor(s);return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`}
+function fmt(s){if(!s&&s!==0)return'-';s=Math.floor(s);return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function dedupe(a,k){const s=new Set();return a.filter(x=>{if(s.has(x[k]))return false;s.add(x[k]);return true})}
 function toast(msg,dur=2500){const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',dur)}
@@ -750,8 +752,8 @@ async function renderDiscovery(c){
 async function renderLiked(c){
   const d=await api('GET',`/liked?sort=${sortState.liked}`);
   c.innerHTML=`
-    <div class="view-hero" style="background:linear-gradient(180deg,#4a0af5 0%,transparent 100%)">
-      <div class="view-hero-art" style="background:linear-gradient(135deg,#450af5,#c4efd9)"><span style="font-size:3rem">♥</span></div>
+    <div class="view-hero" style="background:linear-gradient(180deg,#A5453A 0%,transparent 100%)">
+      <div class="view-hero-art" style="background:linear-gradient(135deg,#A5453A,#D98A7B)"><span style="font-size:3rem">♥</span></div>
       <div class="view-hero-info">
         <p class="eyebrow">Playlist</p>
         <h1>Liked Songs</h1>
@@ -835,7 +837,7 @@ async function renderAdmin(c){
         ${ud.users.map(u=>`
           <div class="song-row" style="grid-template-columns:1fr 1fr 120px;cursor:default">
             <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;color:#000;flex-shrink:0">${u.username[0].toUpperCase()}</div>
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--bg);flex-shrink:0">${u.username[0].toUpperCase()}</div>
               <span style="font-weight:600">${esc(u.username)}${u.id===1?' <span style="color:var(--green);font-size:11px">admin</span>':''}</span>
             </div>
             <div style="color:var(--muted);font-size:13px">${new Date(u.created_at).toLocaleDateString()}</div>
@@ -853,7 +855,7 @@ async function renderAdmin(c){
             <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bg4)">
               <code style="flex:1;font-size:13px;background:var(--bg2);padding:6px 10px;border-radius:var(--radius);letter-spacing:.5px">${inv.code}</code>
               <button class="btn-sm btn-outline" onclick="copyInvite('${inv.code}')">Copy</button>
-              <button class="btn-sm btn-outline" style="color:#f15e6c;border-color:#f15e6c" onclick="revokeInvite('${inv.code}')">Revoke</button>
+              <button class="btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="revokeInvite('${inv.code}')">Revoke</button>
             </div>`).join(''):'<div style="color:var(--muted);font-size:13px">No unused invite codes. Generate one above.</div>'}
         </div>
         ${id.invites.filter(i=>i.used_by).length?`
@@ -917,7 +919,7 @@ function cardH(s,i){
   return`<div class="song-card" data-yid="${s.youtube_id||''}" data-i="${i}">
     <div class="card-art">${art}<button class="card-play"><svg width="15" height="15" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg></button></div>
     <div class="card-title">${esc(s.title)}</div>
-    <div class="card-sub">${esc(s.artist||'—')}</div>
+    <div class="card-sub">${esc(s.artist||'-')}</div>
     ${s.source==='recommended'?'<div class="card-badge">★ For you</div>':s.source==='discovery'?'<div class="card-badge">✦ New</div>':''}
   </div>`;
 }
@@ -944,7 +946,7 @@ function tblH(songs){
         <div class="s-num">${i+1}</div>
         <div class="s-play"></div>
         <div class="s-info">${art}<div class="s-text"><div class="s-title">${esc(s.title)}</div><div class="s-artist-sub">${esc(s.artist||'')}</div></div></div>
-        <div class="s-artist">${esc(s.artist||'—')}</div>
+        <div class="s-artist">${esc(s.artist||'-')}</div>
         <div class="s-dur">${fmt(s.duration)}</div>
         <div class="s-actions">
           <button class="row-btn ${likedSet.has(s.youtube_id)?'liked':''}" data-yid="${s.youtube_id||''}" title="Like">
@@ -1078,7 +1080,7 @@ async function playSong(song){
     const a=r.dataset.yid===song.youtube_id;
     r.classList.toggle('active',a);r.classList.toggle('playing',a&&isPlaying);
   });
-  updQ();document.title=`${song.title} — Butler`;
+  updQ();document.title=`${song.title} - Butler`;
   // Start download progress bar
   document.getElementById('dl-progress-bar').style.width='0%';
   const data=await api('POST',`/songs/play/${song.youtube_id}`);
@@ -1104,7 +1106,7 @@ async function playSong(song){
 }
 
 function loadPlay(yid){
-  document.getElementById('ptime-end').textContent='—';
+  document.getElementById('ptime-end').textContent='-';
   document.getElementById('ptime-start').textContent='0:00';
   document.getElementById('pfill').style.width='0%';
   // Crossfade: fade out current if playing
@@ -1248,12 +1250,12 @@ async function renderSpotifyImport(c){
         ? `<div style="background:var(--bg3);border:1px solid var(--bg4);padding:18px;border-radius:var(--radius);margin-bottom:18px">
              <div style="font-weight:700;margin-bottom:6px">Connect Spotify first</div>
              <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">
-               Spotify's API now requires a logged-in user. Click below to authorize Butler once —
-               we'll store a refresh token and the whole family can import after that.
-               ${auth.configured?'':'<br><br><b style="color:#f15e6c">SPOTIFY_REDIRECT_URI is not set in .env yet.</b>'}
+               Spotify's API now requires a logged-in user. Click below to authorize Butler once,
+               and we'll store a refresh token and the whole family can import after that.
+               ${auth.configured?'':'<br><br><b style="color:var(--danger)">SPOTIFY_REDIRECT_URI is not set in .env yet.</b>'}
              </div>
              <button id="sp-connect" class="btn btn-green" style="width:auto;padding:10px 24px" ${auth.configured?'':'disabled'}>Connect Spotify</button>
-             <div id="sp-connect-err" style="color:#f15e6c;font-size:13px;margin-top:10px"></div>
+             <div id="sp-connect-err" style="color:var(--danger);font-size:13px;margin-top:10px"></div>
            </div>`
         : `<div style="background:var(--bg3);border:1px solid var(--bg4);padding:18px;border-radius:var(--radius);margin-bottom:18px;font-size:13px;color:var(--muted)">
              Spotify isn't connected yet. Ask the admin to open this page and click <b>Connect Spotify</b>, then come back. The CSV fallback below still works in the meantime.
@@ -1266,42 +1268,42 @@ async function renderSpotifyImport(c){
       <svg viewBox="0 0 24 24" fill="#1db954" width="28" height="28"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
       <div style="font-size:1.8rem;font-weight:800">Import from Spotify</div>
     </div>
-    <div style="color:var(--muted);font-size:13px;margin-bottom:28px">Paste any Spotify playlist URL — we'll grab the track list and match each song on YouTube.</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:28px">Paste any Spotify playlist URL and we'll grab the track list and match each song on YouTube.</div>
     <div style="max-width:480px">
       ${connectedBanner}
       ${connectBlock}
       <div style="${urlOpacity}">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px">Playlist URL</div>
         <input id="sp-url2" type="text" placeholder="https://open.spotify.com/playlist/…" ${urlDisabled}
-          style="width:100%;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:#fff;font-size:14px;outline:none;margin-bottom:12px;display:block;-webkit-user-select:text;user-select:text">
+          style="width:100%;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;margin-bottom:12px;display:block;-webkit-user-select:text;user-select:text">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px">
           <input type="checkbox" id="sp-shared2" style="width:auto;cursor:pointer"> Share with family
         </label>
         <button id="sp-start2" class="btn btn-green" style="width:auto;padding:12px 28px" ${urlDisabled}>Import Playlist</button>
-        <div id="sp-err2" style="color:#f15e6c;font-size:13px;margin-top:10px"></div>
+        <div id="sp-err2" style="color:var(--danger);font-size:13px;margin-top:10px"></div>
       </div>
 
       <div style="display:flex;align-items:center;gap:12px;margin:32px 0 24px 0">
         <div style="flex:1;height:1px;background:var(--bg4)"></div>
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px">OR — CSV FALLBACK</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px">OR, CSV FALLBACK</div>
         <div style="flex:1;height:1px;background:var(--bg4)"></div>
       </div>
 
       <div style="font-size:13px;font-weight:600;margin-bottom:6px">Upload Exportify CSV</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
-        For Spotify-curated playlists (Today's Top Hits, Discover Weekly, Daily Mix…) the API blocks us — export the playlist from
+        For Spotify-curated playlists (Today's Top Hits, Discover Weekly, Daily Mix…) the API blocks us. Export the playlist from
         <a href="https://exportify.net" target="_blank" rel="noopener" style="color:var(--green)">exportify.net</a> and upload the CSV here.
       </div>
       <input id="sp-csv-file" type="file" accept=".csv,text/csv"
         style="width:100%;padding:10px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:#fff;font-size:13px;margin-bottom:12px;display:block">
       <div style="font-size:13px;font-weight:600;margin-bottom:6px">Playlist name <span style="color:var(--muted);font-weight:400">(optional)</span></div>
       <input id="sp-csv-name" type="text" placeholder="Leave blank to use filename"
-        style="width:100%;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:#fff;font-size:14px;outline:none;margin-bottom:12px;display:block;-webkit-user-select:text;user-select:text">
+        style="width:100%;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;margin-bottom:12px;display:block;-webkit-user-select:text;user-select:text">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px">
         <input type="checkbox" id="sp-csv-shared" style="width:auto;cursor:pointer"> Share with family
       </label>
       <button id="sp-csv-start" class="btn btn-outline" style="width:auto;padding:12px 28px">Import CSV</button>
-      <div id="sp-csv-err" style="color:#f15e6c;font-size:13px;margin-top:10px"></div>
+      <div id="sp-csv-err" style="color:var(--danger);font-size:13px;margin-top:10px"></div>
     </div>
     <div id="sp-progress-area" style="display:none;max-width:480px;margin-top:24px">
       <div id="sp-pl-name2" style="font-weight:700;font-size:1.1rem;margin-bottom:14px"></div>
@@ -1313,7 +1315,7 @@ async function renderSpotifyImport(c){
       <div id="sp-done2" style="display:none">
         <button id="sp-goto2" class="btn btn-green" style="width:auto;padding:10px 24px;margin-right:8px">Go to playlist</button>
         <button onclick="nav('spotify-import')" class="btn btn-outline btn-sm">Import another</button>
-        <div id="sp-errs2" style="margin-top:14px;font-size:12px;color:#f15e6c;max-height:120px;overflow-y:auto"></div>
+        <div id="sp-errs2" style="margin-top:14px;font-size:12px;color:var(--danger);max-height:120px;overflow-y:auto"></div>
       </div>
     </div>
   </div>`;
@@ -1339,7 +1341,7 @@ async function renderSpotifyImport(c){
           if(j.errors&&j.errors.length)document.getElementById('sp-errs2').innerHTML=`<b>${j.errors.length} not found:</b><br>`+j.errors.map(e=>`• ${esc(e)}`).join('<br>');
           document.getElementById('sp-goto2').onclick=()=>nav('playlist',playlistId);
           await loadPlaylists();
-          toast(`Imported — ${j.found} songs matched`);
+          toast(`Imported: ${j.found} songs matched`);
         }else{
           document.getElementById('sp-status2').textContent=`Searching YouTube… ${pct}%`;
         }
@@ -1374,7 +1376,7 @@ async function renderSpotifyImport(c){
     try{
       const d=await api('GET','/spotify/auth/start');
       const popup=window.open(d.url,'spotify_auth','width=520,height=720');
-      if(!popup){err.textContent='Popup was blocked — allow popups for this site and try again';connectBtn.disabled=false;connectBtn.textContent='Connect Spotify';return}
+      if(!popup){err.textContent='Popup was blocked. Allow popups for this site and try again';connectBtn.disabled=false;connectBtn.textContent='Connect Spotify';return}
       // Poll for connection (works even if the popup callback can't talk to us)
       let attempts=0;
       const poll=setInterval(async()=>{
@@ -1463,13 +1465,13 @@ boot();
   50%     { transform: scaleY(1);  }
 }
 @keyframes butler-glow {
-  0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.4),  0 0 0 0 rgba(29,185,84,.4); }
-  50%     { box-shadow: 0 6px 26px rgba(0,0,0,.5),  0 0 0 6px rgba(29,185,84,.0); }
+  0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.4),  0 0 0 0 rgba(200,155,60,.4); }
+  50%     { box-shadow: 0 6px 26px rgba(0,0,0,.5),  0 0 0 6px rgba(200,155,60,.0); }
 }
 #butler-remote {
   position: fixed; left: 50%; top: 12px; transform: translateX(-50%);
   z-index: 9999; display: none;
-  background: linear-gradient(135deg,#1DB954,#093F1F);
+  background: linear-gradient(135deg,#C89B3C,#5C4419);
   color: #fff; border-radius: 999px;
   padding: 8px 14px 8px 12px;
   font: 600 13px system-ui, -apple-system, Segoe UI, sans-serif;
@@ -1525,8 +1527,8 @@ boot();
       const artist = (d.song.artist || '').slice(0, 40);
       const dev = d.device || 'another device';
       const key = title + '|' + artist + '|' + dev;
-      if (key !== lastKey){ lastKey = key; show(title + ' — ' + artist + '  ·  ' + dev); }
-      else if (!shown){ show(title + ' — ' + artist + '  ·  ' + dev); }
+      if (key !== lastKey){ lastKey = key; show(title + ' - ' + artist + '  ·  ' + dev); }
+      else if (!shown){ show(title + ' - ' + artist + '  ·  ' + dev); }
     }catch(e){ hide(); }
   }
   tick(); setInterval(tick, 3000);
