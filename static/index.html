@@ -152,6 +152,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .song-row:hover .row-btn{color:var(--muted)}
 .row-btn:hover{color:var(--text)!important}
 .row-btn.liked{color:var(--green)!important}
+.row-btn-more{display:none}
 .empty-state{color:var(--muted);padding:56px 0;text-align:center}
 .empty-state p{margin-top:8px;font-size:13px}
 
@@ -240,7 +241,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 
 /* ── Modal ── */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center}
-.modal{background:var(--bg3);border-radius:8px;padding:22px;width:320px;box-shadow:0 16px 48px rgba(0,0,0,.6);position:relative;z-index:201}
+.modal{background:var(--bg3);border-radius:8px;padding:22px;width:min(320px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.6);position:relative;z-index:201}
 .modal h3{margin-bottom:14px;font-size:1rem}
 .modal input,.modal select{width:100%;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg2);color:var(--text);font-size:14px;outline:none;margin-bottom:10px}
 .modal input:focus{border-color:var(--text)}
@@ -260,7 +261,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
   .pl-item{justify-content:center;padding:8px 0}
   .pl-thumb{margin:0}
   #playlist-list{padding:0 4px 8px}
-  .tbl-head,.song-row{grid-template-columns:36px 1fr 60px 44px}
+  .tbl-head,.song-row{grid-template-columns:36px 1fr 60px 68px}
   .tbl-head>:nth-child(3),.song-row .s-artist,.tbl-head>:nth-child(3){display:none}
   .view{padding:12px 12px 100px}
   .view-hero{padding:12px;min-height:140px}
@@ -272,12 +273,24 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
   #ptime-start,#ptime-end{display:none}
   #queue-panel.open{width:220px}
   .search-icon-btn{display:flex}
+
+  /* Touch has no :hover, so anything gated behind it is invisible and
+     effectively missing. Show it outright instead. */
+  .row-btn{color:var(--muted)}
+  .row-btn[data-qi]{display:none}
+  .row-btn-more{display:flex}
+  .card-play{opacity:1;transform:none}
+
+  /* iOS Safari zooms the page on focusing any input under 16px */
+  input,textarea{font-size:16px!important}
 }
 @media(max-width:480px){
   :root{--sidebar-w:0px}
   #sidebar{display:none}
   #bottom-nav{display:flex}
   #player{grid-template-columns:1fr auto;gap:6px}
+  #queue-panel.open{position:fixed;inset:0;width:100%;z-index:40;border-radius:0}
+  .bn-btn{padding:4px 6px;font-size:9px}
 }
 #bottom-nav{display:none;position:fixed;bottom:var(--player-h);left:0;right:0;background:var(--bg2);border-top:1px solid var(--bg3);z-index:30;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
 .bn-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;font-weight:600;padding:4px 12px;border-radius:var(--radius);transition:color .1s}
@@ -400,11 +413,12 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
   <button class="bn-btn active" data-v="home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home</button>
   <button class="bn-btn" data-v="search"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Search</button>
   <button class="bn-btn" data-v="liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Liked</button>
+  <button class="bn-btn" data-v="playlists"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4zm12-1l5 3.5V9.5z"/></svg>Playlists</button>
   <button class="bn-btn" data-v="history"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 100 18A9 9 0 0013 3zm-1 5h1.5v5.25l4.5 2.67-.75 1.23L11 14V8z"/></svg>History</button>
 </div>
 
 <div id="spotify-modal" class="modal-bg" style="display:none">
-  <div class="modal" style="width:380px">
+  <div class="modal" style="width:min(380px,calc(100vw - 32px))">
     <h3 style="display:flex;align-items:center;gap:8px">
       <svg viewBox="0 0 24 24" fill="#1db954" width="20" height="20"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
       Import Spotify Playlist
@@ -585,7 +599,7 @@ function nav(view,param){
   updArrows();
   document.querySelectorAll('.nav-btn,.bn-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===view));
   const c=document.getElementById('content');
-  const views={home:renderHome,search:renderSearch,recommended:renderRecommended,discovery:renderDiscovery,liked:renderLiked,history:renderHistory,admin:renderAdmin,'spotify-import':renderSpotifyImport};
+  const views={home:renderHome,search:renderSearch,recommended:renderRecommended,discovery:renderDiscovery,liked:renderLiked,playlists:renderPlaylists,history:renderHistory,admin:renderAdmin,'spotify-import':renderSpotifyImport};
   if(views[view]){currentPlaylistId=null;views[view](c);}
   else if(view==='playlist')renderPlaylist(c,param);
 }
@@ -769,6 +783,36 @@ async function renderLiked(c){
   c.insertAdjacentHTML('beforeend',wrap);
   bindTbl(d.songs,d.songs);
   bindSortBar('liked',c,d.songs);
+}
+
+// ── Playlists (index view; the sidebar list is desktop-only, this is
+// its full-page equivalent so playlists stay reachable when the sidebar
+// is hidden on narrow screens) ──────────────────────────────────────────
+async function renderPlaylists(c){
+  if(!playlists.length)await loadPlaylists();
+  c.innerHTML=`<div class="view">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:1.8rem;font-weight:800">Playlists</div>
+      <button class="lib-add" id="pl-view-add" title="New playlist">+</button>
+    </div>
+    ${playlists.length?`<div id="pl-view-list"></div>`:'<div class="empty-state">No playlists yet.<p>Tap + to create one.</p></div>'}
+  </div>`;
+  if(playlists.length){
+    const el=document.getElementById('pl-view-list');
+    el.innerHTML=playlists.map(p=>{
+      const mine=p.user_id===me.id;
+      const thumb=p.thumbnail?`<img src="${p.thumbnail}" onerror="this.style.display='none'" alt="">`:'♫';
+      return`<div class="pl-item" data-pid="${p.id}" style="padding:10px 8px">
+        <div class="pl-thumb">${thumb}</div>
+        <div class="pl-info" style="display:flex!important">
+          <div class="pl-name">${esc(p.name)}${p.shared?'<span class="shared-badge">shared</span>':''}</div>
+          <div class="pl-meta">${mine?'Playlist':'By '+esc(p.owner_name)} • ${p.song_count||0}</div>
+        </div>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.pl-item').forEach(item=>item.onclick=()=>nav('playlist',item.dataset.pid));
+  }
+  document.getElementById('pl-view-add').onclick=()=>{document.getElementById('pl-modal').style.display='flex';document.getElementById('pl-name').focus()};
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
@@ -955,6 +999,9 @@ function tblH(songs){
           <button class="row-btn" data-qi="${i}" title="Add to queue" onclick="addToQ(${JSON.stringify(s).replace(/"/g,'&quot;')})">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M4 6h16v2H4zm4 5h12v2H8zm-4 5h16v2H4z"/></svg>
           </button>
+          <button class="row-btn row-btn-more" data-i="${i}" title="More options">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          </button>
         </div>
       </div>`;
     }).join('')}
@@ -976,6 +1023,13 @@ function bindTbl(songs,q){
       if(likedSet.has(yid)){await api('DELETE',`/songs/${yid}/like`);likedSet.delete(yid);btn.classList.remove('liked');btn.querySelector('svg').setAttribute('fill','none')}
       else{try{await api('POST',`/songs/${yid}/like`);likedSet.add(yid);btn.classList.add('liked');btn.querySelector('svg').setAttribute('fill','currentColor')}catch(e){}}
       updateNowLike();
+    };
+  });
+  document.querySelectorAll('.row-btn-more').forEach(btn=>{
+    btn.onclick=e=>{
+      e.stopPropagation();
+      const i=parseInt(btn.dataset.i);
+      showCtx(e,songs[i]);
     };
   });
 }
