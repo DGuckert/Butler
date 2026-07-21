@@ -23,6 +23,13 @@ bash setup.sh
 uvicorn main:app --reload
 ```
 
+or with Docker:
+
+```bash
+cp .env.example .env   # set SECRET_KEY
+docker compose up --build
+```
+
 Android client:
 
 ```bash

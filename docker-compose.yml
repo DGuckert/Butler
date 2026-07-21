@@ -1,0 +1,28 @@
+services:
+  butler:
+    build: .
+    container_name: butler
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Always win over whatever's in .env (even a blank value there),
+      # so data always lands on the persisted volume below rather than
+      # silently falling back to a path inside the container's own
+      # writable layer, which would vanish on the next recreate.
+      MUSIC_DIR: /data/music
+      DATABASE_URL: /data/butler.db
+      SONGS_DB_PATH: /data/songs_meta.db
+    volumes:
+      - butler_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  butler_data:

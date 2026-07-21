@@ -23,12 +23,36 @@ the native Android app, with playlists, likes, and multi-user family accounts.
   lock-screen controls, in [`android/`](android/). See its own
   [README](android/README.md) for build instructions.
 
-## Requirements
-
-- Python 3.10+
-- `ffmpeg` (required by `yt-dlp` for audio extraction)
-
 ## Setup
+
+### Docker (recommended)
+
+```bash
+git clone <this-repo>
+cd butler
+cp .env.example .env
+```
+
+Edit `.env` and set a real `SECRET_KEY`:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Then:
+
+```bash
+docker compose up -d
+```
+
+Downloaded audio and both SQLite databases persist in a named Docker volume
+(`butler_data`), so they survive rebuilds and updates. Open
+`http://localhost:8080` and register the first account, it becomes the admin
+and can generate invite codes for other users under `/admin`.
+
+### Without Docker
+
+Requires Python 3.10+ and `ffmpeg` (used by `yt-dlp` for audio extraction).
 
 ```bash
 git clone <this-repo>
@@ -37,22 +61,13 @@ bash setup.sh
 ```
 
 This installs dependencies, creates a `music/` folder, and copies `.env.example`
-to `.env`. Edit `.env` — at minimum, set a real `SECRET_KEY`:
-
-```bash
-python3 -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-Then start the server:
+to `.env`. Edit `.env` the same way as above, then start the server:
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-Open `http://localhost:8080` and register the first account. It becomes the admin
-and can generate invite codes for other users under `/admin`.
-
-### Running as a service
+#### Running as a systemd service
 
 `butler.service.example` is a template systemd unit. Copy it, adjust the paths/user
 for your setup, and enable it:
@@ -71,7 +86,7 @@ Set `OPENROUTER_API_KEY` in `.env` to enable it, then trigger a run manually wit
 python3 daily_mix.py
 ```
 
-or schedule it (cron / systemd timer) to run once a day.
+or schedule it (cron / systemd timer, or a container exec) to run once a day.
 
 ## Notes
 

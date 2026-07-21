@@ -39,3 +39,52 @@ jobs:
         with:
           name: butler-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  docker:
+    name: Docker (build + smoke test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t butler:ci .
+      - name: Run container
+        run: |
+          docker run -d --name butler-ci -p 8080:8080 \
+            -e SECRET_KEY=ci-smoke-test-secret \
+            butler:ci
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' butler-ci 2>/dev/null || echo "starting")
+            if [ "$status" = "healthy" ]; then echo "healthy"; exit 0; fi
+            sleep 2
+          done
+          echo "Container never became healthy"
+          docker logs butler-ci
+          exit 1
+      - name: Register the first account (no invite code required)
+        run: |
+          code=$(curl -s -o /tmp/register.json -w "%{http_code}" -X POST \
+            http://127.0.0.1:8080/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"username":"ci","password":"ci-smoke-test-pw","invite_code":""}')
+          cat /tmp/register.json
+          if [ "$code" != "200" ]; then echo "register failed: $code"; exit 1; fi
+      - name: Log back in
+        run: |
+          code=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST \
+            http://127.0.0.1:8080/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"ci","password":"ci-smoke-test-pw"}')
+          cat /tmp/login.json
+          if [ "$code" != "200" ]; then echo "login failed: $code"; exit 1; fi
+      - name: A second registration without an invite code must be rejected
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            http://127.0.0.1:8080/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"username":"someone-else","password":"whatever123","invite_code":""}')
+          if [ "$code" != "400" ]; then echo "expected 400, got $code"; exit 1; fi
+      - name: Container logs (for debugging on failure)
+        if: failure()
+        run: docker logs butler-ci

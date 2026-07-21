@@ -11,7 +11,7 @@ import csv
 import io
 import urllib.request
 
-SONGS_DB_PATH = os.path.join(os.path.dirname(__file__), "songs_meta.db")
+from config import SONGS_DB_PATH
 
 # MusicBrainz TSV dump — recordings with artist + title
 # We use the mbdump "recording" table subset hosted as a public flat file

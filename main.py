@@ -48,23 +48,31 @@ class UpdatePlaylistRequest(BaseModel):
 @app.post("/auth/register")
 def register(req: RegisterRequest):
     db = get_db()
-    # Validate invite code
-    invite = db.execute(
-        "SELECT * FROM invite_codes WHERE code=? AND used_by IS NULL",
-        (req.invite_code.strip(),)
-    ).fetchone()
-    if not invite:
-        db.close(); raise HTTPException(400, "Invalid or already-used invite code")
+    is_first_user = db.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"] == 0
+
+    invite = None
+    if not is_first_user:
+        # Every account after the first (the admin) needs an invite code.
+        # The first user has nobody to get one from, so they bootstrap the
+        # server instead of being locked out of their own fresh install.
+        invite = db.execute(
+            "SELECT * FROM invite_codes WHERE code=? AND used_by IS NULL",
+            (req.invite_code.strip(),)
+        ).fetchone()
+        if not invite:
+            db.close(); raise HTTPException(400, "Invalid or already-used invite code")
+
     if db.execute("SELECT id FROM users WHERE username=?", (req.username,)).fetchone():
         db.close(); raise HTTPException(400, "Username taken")
     db.execute("INSERT INTO users (username, password_hash) VALUES (?,?)",
                (req.username, hash_password(req.password)))
     db.commit()
     user = db.execute("SELECT * FROM users WHERE username=?", (req.username,)).fetchone()
-    # Mark invite as used
-    db.execute("UPDATE invite_codes SET used_by=?, used_at=CURRENT_TIMESTAMP WHERE id=?",
-               (user["id"], invite["id"]))
-    db.commit(); db.close()
+    if invite:
+        db.execute("UPDATE invite_codes SET used_by=?, used_at=CURRENT_TIMESTAMP WHERE id=?",
+                   (user["id"], invite["id"]))
+        db.commit()
+    db.close()
     return {"token": create_token(user["id"]), "username": user["username"]}
 
 @app.post("/auth/login")
