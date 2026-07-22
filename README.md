@@ -28,8 +28,8 @@ the native Android app, with playlists, likes, and multi-user family accounts.
 ### Docker (recommended)
 
 ```bash
-git clone <this-repo>
-cd butler
+git clone https://github.com/DGuckert/Butler.git
+cd Butler
 cp .env.example .env
 ```
 
@@ -55,8 +55,8 @@ and can generate invite codes for other users under `/admin`.
 Requires Python 3.10+ and `ffmpeg` (used by `yt-dlp` for audio extraction).
 
 ```bash
-git clone <this-repo>
-cd butler
+git clone https://github.com/DGuckert/Butler.git
+cd Butler
 bash setup.sh
 ```
 
