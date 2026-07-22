@@ -12,9 +12,9 @@ the native Android app, with playlists, likes, and multi-user family accounts.
 - JWT-based auth (bcrypt password hashing)
 - Song downloading via `yt-dlp`
 - Optional Spotify OAuth integration to import your existing playlists
-- Optional "Daily Mix" generator: an LLM (via [OpenRouter](https://openrouter.ai))
-  suggests songs based on your listening history, which are then resolved and
-  downloaded automatically
+- "Daily Mix" generator: builds a personalised playlist from your own library
+  each day using play history and likes (weighted random pick, no external
+  API or AI involved)
 
 ## Clients
 
@@ -78,15 +78,17 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now butler
 ```
 
-### Daily Mix (optional)
+### Daily Mix
 
-Set `OPENROUTER_API_KEY` in `.env` to enable it, then trigger a run manually with:
+Builds automatically from each user's play history and likes, entirely from
+songs already in your library. Trigger a run manually with:
 
 ```bash
 python3 daily_mix.py
 ```
 
 or schedule it (cron / systemd timer, or a container exec) to run once a day.
+No API key or setup required.
 
 ## Notes
 
