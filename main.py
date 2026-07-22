@@ -157,19 +157,26 @@ def search(q: str, user=Depends(get_current_user)):
 # ── Recommendations ───────────────────────────────────────────────────────────
 
 
-# ── Helpers for resolving recommended/discovery rows ──────────────────────────
+# ── Helpers for resolving recommended/discovery rows ─────────────────
+_RESOLVE_FETCH_CAP = 12  # max fresh YouTube searches per request, kept small so the page stays snappy
+
 def _resolve_song_rows(rows):
     """Fill youtube_id/duration/thumbnail/downloaded from the songs table.
 
-    Drops rows that we still can't resolve so clients never see null ids.
+    Recommendation/discovery rows come from a local metadata catalog and
+    usually aren't attached to a YouTube video yet. Rather than silently
+    dropping every row that isn't already in the songs table (which made
+    Recommended/Discovery come back empty for anyone without a big existing
+    library), resolve a capped batch of them in parallel and cache the
+    result in the songs table so future requests are instant.
     """
     if not rows:
         return rows
     db = get_db()
-    out = []
+    resolved, unresolved = [], []
     for r in rows:
         if r.get("youtube_id"):
-            out.append(r)
+            resolved.append(r)
             continue
         title = (r.get("title") or "").strip()
         artist = (r.get("artist") or "").strip()
@@ -182,18 +189,55 @@ def _resolve_song_rows(rows):
             "LIMIT 1",
             (key, title.lower(), artist.lower()),
         ).fetchone()
-        if not row or not row["youtube_id"]:
-            continue
-        merged = dict(r)
-        merged["youtube_id"] = row["youtube_id"]
-        merged["duration"] = row["duration"] or merged.get("duration") or 0
-        merged["thumbnail"] = row["thumbnail"] or (
-            f"https://img.youtube.com/vi/{row['youtube_id']}/mqdefault.jpg"
-        )
-        merged["downloaded"] = row["downloaded"]
-        out.append(merged)
+        if row and row["youtube_id"]:
+            merged = dict(r)
+            merged["youtube_id"] = row["youtube_id"]
+            merged["duration"] = row["duration"] or merged.get("duration") or 0
+            merged["thumbnail"] = row["thumbnail"] or (
+                f"https://img.youtube.com/vi/{row['youtube_id']}/mqdefault.jpg"
+            )
+            merged["downloaded"] = row["downloaded"]
+            resolved.append(merged)
+        else:
+            unresolved.append(r)
+
+    to_fetch = unresolved[:_RESOLVE_FETCH_CAP]
+    if to_fetch:
+        import concurrent.futures
+
+        def _fetch(r):
+            title = (r.get("title") or "").strip()
+            artist = (r.get("artist") or "").strip()
+            try:
+                hits = search_youtube(f"{title} {artist}".strip(), max_results=1)
+            except Exception:
+                hits = None
+            return r, (hits[0] if hits else None)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(to_fetch)) as pool:
+            for r, hit in pool.map(_fetch, to_fetch):
+                if not hit:
+                    continue
+                title = (r.get("title") or "").strip()
+                artist = (r.get("artist") or "").strip()
+                yid = hit["youtube_id"]
+                title_key = f"{title.lower()}|{artist.lower()}"
+                thumbnail = find_album_art(title, artist, yid)
+                db.execute(
+                    "INSERT OR IGNORE INTO songs (title,artist,duration,youtube_id,downloaded,title_key,thumbnail) "
+                    "VALUES (?,?,?,?,0,?,?)",
+                    (title, artist, hit.get("duration") or r.get("duration") or 0, yid, title_key, thumbnail),
+                )
+                merged = dict(r)
+                merged["youtube_id"] = yid
+                merged["duration"] = hit.get("duration") or merged.get("duration") or 0
+                merged["thumbnail"] = thumbnail
+                merged["downloaded"] = 0
+                resolved.append(merged)
+        db.commit()
+
     db.close()
-    return out
+    return resolved
 
 @app.get("/recommendations")
 def recommendations(user=Depends(get_current_user)):
