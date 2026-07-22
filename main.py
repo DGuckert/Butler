@@ -16,6 +16,7 @@ from downloader import search_youtube, ensure_downloaded, is_downloading, get_do
 from songs_db import search_local, add_track
 from recommend import get_recommendations, get_discovery
 from config import MUSIC_DIR
+from album_art import find_album_art
 
 app = FastAPI(title="Butler")
 log_filter.install()
@@ -213,7 +214,7 @@ async def play(youtube_id: str, user=Depends(get_current_user)):
         if not results: db.close(); raise HTTPException(404, "Song not found")
         r = results[0]
         title_key = f"{r['title'].lower()}|{(r['artist'] or '').lower()}"
-        thumbnail = f"https://img.youtube.com/vi/{youtube_id}/mqdefault.jpg"
+        thumbnail = find_album_art(r["title"], r["artist"], youtube_id)
         db.execute("INSERT OR IGNORE INTO songs (title,artist,duration,youtube_id,downloaded,title_key,thumbnail) VALUES (?,?,?,?,0,?,?)",
                    (r["title"], r["artist"], r["duration"], youtube_id, title_key, thumbnail))
         db.commit(); add_track(r["title"], r["artist"], r["duration"])
@@ -628,7 +629,7 @@ async def _run_import(job_id: str, playlist_id: int, tracks: list):
             best = results[0]
             youtube_id = best["youtube_id"]
             title_key = f"{best['title'].lower()}|{(best['artist'] or '').lower()}"
-            thumbnail = f"https://img.youtube.com/vi/{youtube_id}/mqdefault.jpg"
+            thumbnail = find_album_art(best["title"], best["artist"], youtube_id)
 
             db = get_db()
             db.execute("""
