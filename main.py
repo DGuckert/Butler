@@ -1048,4 +1048,14 @@ def now_playing(user=Depends(get_current_user)):
         "updated_at": state["updated_at"],
     }
 
+@app.get("/")
+def serve_index():
+    # No caching for the app shell: Cloudflare (and browsers) sit in front of
+    # this and a rebuilt/redeployed container should be visible immediately,
+    # not stuck behind an edge cache until a manual purge happens.
+    return FileResponse(
+        "static/index.html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
