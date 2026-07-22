@@ -92,6 +92,17 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS artist_info (
+            artist_lower TEXT PRIMARY KEY,
+            display_name TEXT,
+            bio TEXT,
+            image TEXT,
+            source_url TEXT,
+            fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # Single-row table holding the family-wide Spotify OAuth refresh token.
     # We only ever store id=1; admin connects once and the whole family imports through it.
     c.execute("""

@@ -14,9 +14,10 @@ from database import init_db, get_db
 from auth import hash_password, verify_password, create_token, get_current_user
 from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress
 from songs_db import search_local, add_track
-from recommend import get_recommendations, get_discovery
+from recommend import get_recommendations, get_discovery, get_artist_tracks
 from config import MUSIC_DIR
 from album_art import find_album_art
+from artist_info import fetch_artist_info
 
 app = FastAPI(title="Butler")
 log_filter.install()
@@ -246,6 +247,31 @@ def recommendations(user=Depends(get_current_user)):
 @app.get("/discovery")
 def discovery(user=Depends(get_current_user)):
     return {"songs": _resolve_song_rows(get_discovery(user["id"], limit=40))[:20]}
+
+@app.get("/artists/{artist_name}")
+def artist_page(artist_name: str, user=Depends(get_current_user)):
+    artist_lower = artist_name.strip().lower()
+    db = get_db()
+    cached = db.execute(
+        "SELECT display_name, bio, image, source_url FROM artist_info WHERE artist_lower=?",
+        (artist_lower,),
+    ).fetchone()
+    if cached:
+        info = {"bio": cached["bio"], "image": cached["image"], "source_url": cached["source_url"]}
+        display_name = cached["display_name"] or artist_name
+    else:
+        info = fetch_artist_info(artist_name)
+        display_name = artist_name
+        db.execute(
+            "INSERT OR REPLACE INTO artist_info (artist_lower, display_name, bio, image, source_url) "
+            "VALUES (?,?,?,?,?)",
+            (artist_lower, display_name, info["bio"], info["image"], info["source_url"]),
+        )
+        db.commit()
+    db.close()
+
+    tracks = _resolve_song_rows(get_artist_tracks(artist_name, limit=30))[:20]
+    return {"artist": display_name, "info": info, "songs": tracks}
 
 # ── Play / Stream ─────────────────────────────────────────────────────────────
 

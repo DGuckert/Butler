@@ -125,6 +125,9 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .card-play svg{margin-left:3px}
 .card-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;font-family:var(--font-display)}
 .card-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-sub-artist:hover,.row-artist-link:hover{color:var(--green);text-decoration:underline;cursor:pointer}
+.artist-bio{padding:0 20px 20px;max-width:760px;color:var(--muted);font-size:13.5px;line-height:1.6}
+.artist-bio a{color:var(--green);white-space:nowrap}
 .card-badge{font-size:10px;color:var(--green);margin-top:3px;font-weight:600}
 
 /* ── Table ── */
@@ -602,6 +605,7 @@ function nav(view,param){
   const views={home:renderHome,search:renderSearch,recommended:renderRecommended,discovery:renderDiscovery,liked:renderLiked,playlists:renderPlaylists,history:renderHistory,admin:renderAdmin,'spotify-import':renderSpotifyImport};
   if(views[view]){currentPlaylistId=null;views[view](c);}
   else if(view==='playlist')renderPlaylist(c,param);
+  else if(view==='artist')renderArtist(c,param);
 }
 function updArrows(){document.getElementById('nav-back').disabled=navIdx<=0;document.getElementById('nav-fwd').disabled=navIdx>=navHist.length-1}
 document.getElementById('nav-back').onclick=()=>{if(navIdx>0){navIdx--;navLock=true;const h=navHist[navIdx];nav(h.view,h.param);navLock=false}};
@@ -854,6 +858,34 @@ async function renderPlaylist(c,pid){
   bindTbl(d.songs,d.songs);
 }
 
+async function renderArtist(c,artistName){
+  c.innerHTML='<div class="empty-state" style="padding-top:80px">Loading\u2026</div>';
+  let d;
+  try{ d=await api('GET',`/artists/${encodeURIComponent(artistName)}`); }
+  catch(e){ c.innerHTML=`<div class="empty-state">Couldn't load ${esc(artistName)}.</div>`; return; }
+  const info=d.info||{};
+  const[c1,c2]=pal(d.artist||artistName);
+  const artSrc=info.image;
+  c.innerHTML=`
+    <div class="view-hero" style="background:linear-gradient(180deg,${c1} 0%,transparent 100%)">
+      <div class="view-hero-art" style="border-radius:50%">${artSrc?`<img src="${artSrc}" onerror="this.style.display='none'" alt="">`:`<span style="font-size:3rem">\u266a</span>`}</div>
+      <div class="view-hero-info">
+        <p class="eyebrow">Artist</p>
+        <h1>${esc(d.artist||artistName)}</h1>
+        <p class="sub">${d.songs.length} song${d.songs.length!==1?'s':''}</p>
+      </div>
+    </div>
+    ${info.bio?`<div class="artist-bio">${esc(info.bio)}${info.source_url?` <a href="${info.source_url}" target="_blank" rel="noopener">Wikipedia \u2197</a>`:''}</div>`:''}
+    <div class="hero-actions">
+      ${d.songs.length?`<button class="play-all-btn" id="artist-play-all"><svg width="18" height="18" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg></button>`:''}
+      <button class="ghost-btn ${shuffleOn?'active':''}" onclick="toggleShuffle()">Shuffle</button>
+    </div>`;
+  const inner=`<div class="view">${d.songs.length?tblH(d.songs):'<div class="empty-state">No tracks found for this artist yet.</div>'}</div>`;
+  c.insertAdjacentHTML('beforeend',inner);
+  if(d.songs.length)document.getElementById('artist-play-all').onclick=()=>{queue=[...d.songs];qi=0;const s=queue[0];s.youtube_id?playSong(s):resolvePlay(s)};
+  bindTbl(d.songs,d.songs);
+}
+
 async function toggleShare(pid,newVal){
   await api('PATCH',`/playlists/${pid}`,{shared:!!newVal});
   toast(newVal?'Playlist shared with family':'Playlist is now private');
@@ -963,15 +995,16 @@ function cardH(s,i){
   return`<div class="song-card" data-yid="${s.youtube_id||''}" data-i="${i}">
     <div class="card-art">${art}<button class="card-play"><svg width="15" height="15" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg></button></div>
     <div class="card-title">${esc(s.title)}</div>
-    <div class="card-sub">${esc(s.artist||'-')}</div>
+    <div class="card-sub card-sub-artist" data-artist="${esc(s.artist||'')}">${esc(s.artist||'-')}</div>
     ${s.source==='recommended'?'<div class="card-badge">★ For you</div>':s.source==='discovery'?'<div class="card-badge">✦ New</div>':''}
   </div>`;
 }
 function bindCards(songs,q){
   document.querySelectorAll('.song-card').forEach(card=>{
     const go=()=>{const i=parseInt(card.dataset.i);queue=q||songs;qi=i;const s=songs[i];s?.youtube_id?playSong(s):resolvePlay(s)};
-    card.onclick=e=>{if(!e.target.closest('.card-play'))go()};
+    card.onclick=e=>{if(!e.target.closest('.card-play')&&!e.target.closest('.card-sub-artist'))go()};
     const pb=card.querySelector('.card-play');if(pb)pb.onclick=e=>{e.stopPropagation();go()};
+    const ab=card.querySelector('.card-sub-artist');if(ab&&ab.dataset.artist)ab.onclick=e=>{e.stopPropagation();nav('artist',ab.dataset.artist)};
     card.oncontextmenu=e=>{e.preventDefault();const i=parseInt(card.dataset.i);showCtx(e,songs[i])};
   });
 }
@@ -989,8 +1022,8 @@ function tblH(songs){
       return`<div class="song-row ${isAct?'active':''} ${isAct&&isPlaying?'playing':''}" data-yid="${s.youtube_id||''}" data-i="${i}">
         <div class="s-num">${i+1}</div>
         <div class="s-play"></div>
-        <div class="s-info">${art}<div class="s-text"><div class="s-title">${esc(s.title)}</div><div class="s-artist-sub">${esc(s.artist||'')}</div></div></div>
-        <div class="s-artist">${esc(s.artist||'-')}</div>
+        <div class="s-info">${art}<div class="s-text"><div class="s-title">${esc(s.title)}</div><div class="s-artist-sub row-artist-link" data-artist="${esc(s.artist||'')}">${esc(s.artist||'')}</div></div></div>
+        <div class="s-artist row-artist-link" data-artist="${esc(s.artist||'')}">${esc(s.artist||'-')}</div>
         <div class="s-dur">${fmt(s.duration)}</div>
         <div class="s-actions">
           <button class="row-btn ${likedSet.has(s.youtube_id)?'liked':''}" data-yid="${s.youtube_id||''}" title="Like">
@@ -1011,11 +1044,15 @@ function addToQ(s){queue.push(s);toast(`Added: ${s.title}`);updQ()}
 function bindTbl(songs,q){
   document.querySelectorAll('.song-row').forEach(row=>{
     row.onclick=e=>{
-      if(e.target.closest('.row-btn'))return;
+      if(e.target.closest('.row-btn')||e.target.closest('.row-artist-link'))return;
       const i=parseInt(row.dataset.i);queue=q||songs;qi=i;
       const s=songs[i];if(s)s.youtube_id?playSong(s):resolvePlay(s);
     };
     row.oncontextmenu=e=>{e.preventDefault();const i=parseInt(row.dataset.i);showCtx(e,songs[i])};
+  });
+  document.querySelectorAll('.row-artist-link').forEach(el=>{
+    if(!el.dataset.artist)return;
+    el.onclick=e=>{e.stopPropagation();nav('artist',el.dataset.artist)};
   });
   document.querySelectorAll('.row-btn[data-yid]').forEach(btn=>{
     btn.onclick=async e=>{

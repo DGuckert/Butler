@@ -108,3 +108,52 @@ def get_discovery(user_id: int, limit: int = 20) -> list:
 
     random.shuffle(unheard)
     return unheard[:limit]
+
+
+def get_artist_tracks(artist_name: str, limit: int = 20) -> list:
+    """Every known track by this artist: already-in-library songs first
+    (real, playable, immediately resolvable), then unheard tracks from the
+    local metadata catalog to round the page out."""
+    if not artist_name or not artist_name.strip():
+        return []
+    artist_lower = artist_name.strip().lower()
+
+    db = get_db()
+    library_rows = db.execute("""
+        SELECT title, artist, duration, youtube_id, downloaded, thumbnail
+        FROM songs WHERE LOWER(artist) = ?
+        ORDER BY added_at DESC
+    """, (artist_lower,)).fetchall()
+    db.close()
+
+    seen_title_keys = set()
+    results = []
+    for r in library_rows:
+        key = f"{r['title'].lower()}|{artist_lower}"
+        seen_title_keys.add(key)
+        results.append({
+            "title": r["title"], "artist": r["artist"], "duration": r["duration"],
+            "youtube_id": r["youtube_id"], "downloaded": r["downloaded"],
+            "thumbnail": r["thumbnail"], "source": "library",
+        })
+
+    if len(results) < limit:
+        meta = get_meta_db()
+        rows = meta.execute("""
+            SELECT title, artist, duration FROM tracks
+            WHERE artist_lower = ? ORDER BY RANDOM() LIMIT ?
+        """, (artist_lower, (limit - len(results)) * 3)).fetchall()
+        meta.close()
+        for r in rows:
+            key = f"{r['title'].lower()}|{artist_lower}"
+            if key in seen_title_keys:
+                continue
+            seen_title_keys.add(key)
+            results.append({
+                "title": r["title"], "artist": r["artist"], "duration": r["duration"],
+                "youtube_id": None, "downloaded": 0, "source": "artist_catalog",
+            })
+            if len(results) >= limit:
+                break
+
+    return results[:limit]
