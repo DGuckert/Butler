@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from typing import Optional
 from database import init_db, get_db
 from auth import hash_password, verify_password, create_token, get_current_user
-from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress
+from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match
 from songs_db import search_local, add_track
 from recommend import get_recommendations, get_discovery, get_artist_tracks
 from config import MUSIC_DIR
@@ -209,11 +209,15 @@ def _resolve_song_rows(rows):
         def _fetch(r):
             title = (r.get("title") or "").strip()
             artist = (r.get("artist") or "").strip()
+            expected_dur = r.get("duration") or None
             try:
-                hits = search_youtube(f"{title} {artist}".strip(), max_results=1)
+                hits = search_youtube(f"{title} {artist}".strip(), max_results=5 if expected_dur else 1)
             except Exception:
                 hits = None
-            return r, (hits[0] if hits else None)
+            if not hits:
+                return r, None
+            best, _matched = pick_best_match(hits, expected_dur)
+            return r, best
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(to_fetch)) as pool:
             for r, hit in pool.map(_fetch, to_fetch):
@@ -302,9 +306,11 @@ async def play(youtube_id: str, user=Depends(get_current_user)):
 @app.post("/songs/resolve")
 async def resolve_song(body: dict, user=Depends(get_current_user)):
     q = f"{body.get('title','')} {body.get('artist','')}".strip()
-    results = search_youtube(q, max_results=3)
+    expected_dur = body.get("duration") or None
+    results = search_youtube(q, max_results=5 if expected_dur else 3)
     if not results: raise HTTPException(404, "Could not find on YouTube")
-    return results[0]
+    best, _matched = pick_best_match(results, expected_dur)
+    return best
 
 @app.get("/songs/status/{youtube_id}")
 def song_status(youtube_id: str, user=Depends(get_current_user)):
@@ -690,13 +696,14 @@ async def _run_import(job_id: str, playlist_id: int, tracks: list):
     for track in tracks:
         try:
             q = f"{track['title']} {track['artist']}"
-            results = search_youtube(q, max_results=2)
+            expected_dur = track.get("duration") or None
+            results = search_youtube(q, max_results=5 if expected_dur else 2)
             if not results:
                 job["errors"].append(f"Not found: {track['title']}")
                 job["done"] += 1
                 continue
 
-            best = results[0]
+            best, _matched = pick_best_match(results, expected_dur)
             youtube_id = best["youtube_id"]
             title_key = f"{best['title'].lower()}|{(best['artist'] or '').lower()}"
             thumbnail = find_album_art(best["title"], best["artist"], youtube_id)
@@ -759,13 +766,21 @@ async def spotify_import_csv(
         artist_key = (field_map.get('artist name(s)') or field_map.get('artist name')
                       or field_map.get('artist names') or field_map.get('artist')
                       or field_map.get('artists'))
+        duration_key = (field_map.get('duration (ms)') or field_map.get('duration_ms')
+                         or field_map.get('duration ms'))
         if not title_key or not artist_key:
             raise HTTPException(400, "CSV must include 'Track Name' and 'Artist Name(s)' columns (Exportify format)")
         for row in reader:
             title = (row.get(title_key) or '').strip()
             artist = (row.get(artist_key) or '').strip()
+            duration = None
+            if duration_key:
+                try:
+                    duration = int(float(row.get(duration_key) or 0)) // 1000 or None
+                except (TypeError, ValueError):
+                    duration = None
             if title:
-                tracks.append({"title": title, "artist": artist})
+                tracks.append({"title": title, "artist": artist, "duration": duration})
     except HTTPException:
         raise
     except Exception as e:

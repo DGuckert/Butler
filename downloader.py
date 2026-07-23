@@ -136,3 +136,36 @@ async def ensure_downloaded(youtube_id: str) -> str:
 
 def is_downloading(youtube_id: str) -> bool:
     return youtube_id in _downloading
+
+
+def pick_best_match(candidates: list, expected_duration=None, tolerance: int = 2):
+    """Pick the best YouTube search result for a song we already know the
+    real duration of (from Spotify, iTunes, or our local metadata catalog).
+
+    YouTube search for "<title> <artist>" often surfaces extended mixes,
+    live versions, full-album uploads, or a completely different song that
+    happens to share a title -- any of which throws off both playback
+    length and (critically) synced lyric timing, since lyrics are timed
+    against the *real* track. Comparing candidate durations against a known
+    expected duration and preferring the closest one catches most of these.
+
+    Returns (best_candidate, matched) where matched is True if the best
+    candidate's duration is within `tolerance` seconds of expected_duration.
+    With no expected_duration (nothing to compare against), just returns
+    the top search result as before.
+    """
+    if not candidates:
+        return None, False
+    if not expected_duration:
+        return candidates[0], False
+
+    scored = [
+        (abs((c.get("duration") or 0) - expected_duration), c)
+        for c in candidates if c.get("duration")
+    ]
+    if not scored:
+        return candidates[0], False
+
+    scored.sort(key=lambda x: x[0])
+    best_diff, best = scored[0]
+    return best, best_diff <= tolerance

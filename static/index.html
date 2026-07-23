@@ -1234,7 +1234,7 @@ function removeFromQ(i){queue.splice(i,1);if(qi>=queue.length)qi=Math.max(0,queu
 async function resolvePlay(song){
   document.getElementById('res-pill').style.display='block';
   try{
-    const d=await api('POST','/songs/resolve',{title:song.title,artist:song.artist});
+    const d=await api('POST','/songs/resolve',{title:song.title,artist:song.artist,duration:song.duration||null});
     document.getElementById('res-pill').style.display='none';
     const r={...song,...d};if(queue[qi])queue[qi]=r;
     playSong(r);
