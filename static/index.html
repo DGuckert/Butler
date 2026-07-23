@@ -13,14 +13,14 @@
   --font-display:Georgia,'Iowan Old Style','Palatino Linotype',serif;
   --sidebar-w:232px;--player-h:90px;--radius:4px;
 }
-body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;overflow:hidden;user-select:none;font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden;user-select:none;font-size:14px}
 input,textarea,select{user-select:text;-webkit-user-select:text}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:4px}
 
 /* ── Auth ── */
-#auth-screen{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:10px;background:linear-gradient(135deg,#17140F,#221D15)}
+#auth-screen{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;flex-direction:column;gap:10px;background:linear-gradient(135deg,#17140F,#221D15)}
 .auth-logo{font-size:2rem;font-weight:800;margin-bottom:20px;font-family:var(--font-display)}
 .auth-logo span{color:var(--green)}
 #auth-screen input{width:300px;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .15s}
@@ -36,7 +36,7 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 #auth-toggle a{color:var(--text);cursor:pointer;text-decoration:underline}
 
 /* ── App shell ── */
-#app{display:none;height:100vh;flex-direction:column}
+#app{display:none;height:100vh;height:100dvh;flex-direction:column}
 #app.visible{display:flex}
 #body{display:flex;flex:1;overflow:hidden;gap:2px;padding:2px}
 
@@ -287,6 +287,10 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
   /* iOS Safari zooms the page on focusing any input under 16px */
   input,textarea{font-size:16px!important}
 }
+#bottom-nav{display:none;position:fixed;bottom:var(--player-h);left:0;right:0;background:var(--bg2);border-top:1px solid var(--bg3);z-index:30;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
+.bn-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;font-weight:600;padding:4px 12px;border-radius:var(--radius);transition:color .1s}
+.bn-btn svg{width:22px;height:22px}
+.bn-btn.active{color:var(--text)}
 @media(max-width:480px){
   :root{--sidebar-w:0px}
   #sidebar{display:none}
@@ -295,10 +299,6 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
   #queue-panel.open{position:fixed;inset:0;width:100%;z-index:40;border-radius:0}
   .bn-btn{padding:4px 6px;font-size:9px}
 }
-#bottom-nav{display:none;position:fixed;bottom:var(--player-h);left:0;right:0;background:var(--bg2);border-top:1px solid var(--bg3);z-index:30;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
-.bn-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;font-weight:600;padding:4px 12px;border-radius:var(--radius);transition:color .1s}
-.bn-btn svg{width:22px;height:22px}
-.bn-btn.active{color:var(--text)}
 </style>
 </head>
 <body>
