@@ -170,6 +170,8 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 
 /* ── Player ── */
 #player{height:var(--player-h);background:var(--bg2);border-top:1px solid #1a1a1a;display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+body.player-idle{--player-h:0px}
+body.player-idle #player{display:none}
 #now-playing{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}
 #now-art{width:52px;height:52px;border-radius:var(--radius);background:var(--bg3);flex-shrink:0;object-fit:cover;display:none}
 #now-info{min-width:0;flex:1;overflow:hidden}
@@ -571,6 +573,7 @@ async function boot(){
     me=await api('GET','/auth/me');
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app').classList.add('visible');
+    document.body.classList.add('player-idle');
     document.getElementById('user-name').textContent=me.username;
     document.getElementById('user-avatar').textContent=me.username[0].toUpperCase();
     if(me.id===1)document.getElementById('dd-admin').style.display='block';
@@ -1161,6 +1164,7 @@ const audioNext=document.getElementById('audio-next');
 
 async function playSong(song){
   currentSong=song;isPlaying=true;
+  document.body.classList.remove('player-idle');
   document.getElementById('now-title').textContent=song.title;
   document.getElementById('now-artist').textContent=song.artist||'';
   const art=document.getElementById('now-art');
