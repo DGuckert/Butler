@@ -18,6 +18,8 @@ from recommend import get_recommendations, get_discovery, get_artist_tracks
 from config import MUSIC_DIR
 from album_art import find_album_art
 from artist_info import fetch_artist_info
+import scrobbling
+from subsonic import router as subsonic_router
 
 app = FastAPI(title="Butler")
 log_filter.install()
@@ -1072,5 +1074,46 @@ def serve_index():
         "static/index.html",
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
+
+# ── Scrobbling (ListenBrainz) ────────────────────────────────────
+@app.get("/settings/scrobbling")
+def get_scrobble_settings(user=Depends(get_current_user)):
+    cfg = scrobbling.get_config(user["id"])
+    token = cfg.get("listenbrainz_token") if cfg else None
+    return {
+        "enabled": bool(cfg and cfg.get("enabled")),
+        "has_token": bool(token),
+        "token_preview": (token[:4] + "\u2026" + token[-4:]) if token and len(token) > 8 else None,
+    }
+
+@app.post("/settings/scrobbling")
+def save_scrobble_settings(body: dict, user=Depends(get_current_user)):
+    token = (body.get("listenbrainz_token") or "").strip()
+    enabled = bool(body.get("enabled", True))
+    db = get_db()
+    existing = db.execute("SELECT listenbrainz_token FROM scrobble_config WHERE user_id=?", (user["id"],)).fetchone()
+    db.close()
+    # Keep the existing token if the client sends a blank one back (e.g. just toggling enabled)
+    if not token and existing:
+        token = existing["listenbrainz_token"] or ""
+    scrobbling.save_config(user["id"], token, enabled)
+    return {"ok": True}
+
+@app.post("/songs/{youtube_id}/scrobble")
+async def scrobble_song(youtube_id: str, user=Depends(get_current_user)):
+    """Called by the native web/Android client once a track has been played
+    past the standard scrobble threshold (half its duration, or 4 minutes,
+    whichever is shorter) -- not on every play start, to avoid over-counting
+    skips. Subsonic clients hit /rest/scrobble.view instead, which also
+    routes here."""
+    db = get_db()
+    song = db.execute("SELECT * FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
+    db.close()
+    if not song:
+        raise HTTPException(404, "Song not found")
+    await scrobbling.scrobble_for_user(user["id"], dict(song))
+    return {"ok": True}
+
+app.include_router(subsonic_router)
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

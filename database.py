@@ -93,6 +93,14 @@ def init_db():
     """)
 
     c.execute("""
+        CREATE TABLE IF NOT EXISTS scrobble_config (
+            user_id INTEGER PRIMARY KEY,
+            listenbrainz_token TEXT,
+            enabled INTEGER DEFAULT 1
+        )
+    """)
+
+    c.execute("""
         CREATE TABLE IF NOT EXISTS artist_info (
             artist_lower TEXT PRIMARY KEY,
             display_name TEXT,

@@ -399,6 +399,7 @@ body.player-idle #player{display:none}
             <div id="user-dropdown">
               <div class="dd-item" id="dd-admin" style="display:none">Family / Admin</div>
               <div class="dd-item" id="dd-passwd">Change password</div>
+              <div class="dd-item" id="dd-scrobble">Scrobbling</div>
               <div class="dd-item" id="dd-kbd">Keyboard shortcuts</div>
               <hr class="ci-sep">
               <div class="dd-item danger" id="dd-logout">Log out</div>
@@ -568,6 +569,25 @@ body.player-idle #player{display:none}
   </div>
 </div>
 
+<div id="scrobble-modal" class="modal-bg" style="display:none">
+  <div class="modal">
+    <h3>Scrobbling</h3>
+    <p style="color:var(--muted);font-size:12.5px;margin-bottom:12px">
+      Reports finished plays to <a href="https://listenbrainz.org" target="_blank" rel="noopener" style="color:var(--green)">ListenBrainz</a>.
+      Grab a personal token from your ListenBrainz profile settings and paste it below.
+    </p>
+    <input id="sc-token" type="text" placeholder="ListenBrainz user token">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:10px 0">
+      <input id="sc-enabled" type="checkbox" style="width:auto"> Enabled
+    </label>
+    <div id="sc-err" style="color:var(--danger);font-size:12px;margin-bottom:10px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline btn-sm" id="sc-cancel">Cancel</button>
+      <button class="btn btn-green" id="sc-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="rename-modal" class="modal-bg" style="display:none">
   <div class="modal">
     <h3>Rename Playlist</h3>
@@ -601,7 +621,7 @@ body.player-idle #player{display:none}
 const BASE='';
 let token=localStorage.getItem('bt')||'';
 let me=null,likedSet=new Set(),playlists=[];
-let queue=[],qi=0,currentSong=null,isPlaying=false;
+let queue=[],qi=0,currentSong=null,isPlaying=false,scrobbledFor=null;
 let pollTimer=null,progressTimer=null;
 let shuffleOn=false,repeatMode=0;
 let qOpen=false,ctxSong=null,prevVol=1;
@@ -705,6 +725,26 @@ document.getElementById('dd-kbd').onclick=()=>toast('Space: Play/Pause  ←→: 
 document.getElementById('dd-admin').onclick=()=>{nav('admin');document.getElementById('user-dropdown').classList.remove('open')};
 
 // Change password
+document.getElementById('dd-scrobble').onclick=async()=>{
+  document.getElementById('user-dropdown').classList.remove('open');
+  try{
+    const cfg=await api('GET','/settings/scrobbling');
+    document.getElementById('sc-enabled').checked=cfg.enabled;
+    document.getElementById('sc-token').placeholder=cfg.token_preview?`Current: ${cfg.token_preview} (leave blank to keep)`:'ListenBrainz user token';
+    document.getElementById('sc-token').value='';
+    document.getElementById('sc-err').textContent='';
+  }catch(e){}
+  document.getElementById('scrobble-modal').style.display='flex';
+};
+document.getElementById('sc-cancel').onclick=()=>{document.getElementById('scrobble-modal').style.display='none'};
+document.getElementById('sc-save-btn').onclick=async()=>{
+  try{
+    await api('POST','/settings/scrobbling',{listenbrainz_token:document.getElementById('sc-token').value.trim(),enabled:document.getElementById('sc-enabled').checked});
+    document.getElementById('scrobble-modal').style.display='none';
+    toast('Scrobbling settings saved');
+  }catch(e){document.getElementById('sc-err').textContent=e.message}
+};
+
 document.getElementById('dd-passwd').onclick=()=>{
   document.getElementById('passwd-modal').style.display='flex';
   document.getElementById('pw-current').focus();
@@ -1260,6 +1300,7 @@ async function playSong(song){
   document.getElementById('np-screen').style.setProperty('--np-c1',npc1);
   npLyricsLoadedFor=null;
   if(document.getElementById('np-screen').classList.contains('open'))loadLyricsFor(song.youtube_id);
+  scrobbledFor=null;
   updateNowLike();setPlaying(true);
   document.querySelectorAll('.song-row').forEach(r=>{
     const a=r.dataset.yid===song.youtube_id;
@@ -1467,6 +1508,13 @@ audio.ontimeupdate=()=>{
   document.getElementById('np-pfill').style.width=pct+'%';
   document.getElementById('np-time-start').textContent=fmt(audio.currentTime);
   if(document.getElementById('np-screen').classList.contains('open'))highlightLyrics();
+  if(currentSong?.youtube_id&&scrobbledFor!==currentSong.youtube_id&&audio.duration){
+    const threshold=Math.min(audio.duration/2,240);
+    if(audio.currentTime>=threshold){
+      scrobbledFor=currentSong.youtube_id;
+      api('POST',`/songs/${currentSong.youtube_id}/scrobble`).catch(()=>{});
+    }
+  }
   // Gapless: start loading next when 10s left
   if(audio.duration&&audio.currentTime>audio.duration-10)preloadNext();
 };
