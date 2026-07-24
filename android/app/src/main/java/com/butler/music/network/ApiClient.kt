@@ -38,6 +38,8 @@ class ApiClient(private val prefs: Prefs) {
 
     val baseUrl: String get() = prefs.serverUrl
 
+    fun authToken(): String? = prefs.token
+
     fun streamUrl(youtubeId: String): String = "$baseUrl/songs/stream/$youtubeId"
 
     // ── low-level helpers ──────────────────────────────────────────────

@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -87,7 +89,9 @@ fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggle
                     SongRow(
                         song = song,
                         onClick = { onSongClick(state.value, song) },
-                        onToggleLike = { onToggleLike(song) }
+                        onToggleLike = { onToggleLike(song) },
+                        downloadState = vm.downloadStateFor(song),
+                        onToggleDownload = { vm.toggleDownload(song) }
                     )
                 }
             }
@@ -222,6 +226,10 @@ fun LibraryTab(
                 item {
                     LikedSongsRow(count = likedCount) { navController.navigate("liked") }
                 }
+                item {
+                    val downloadedCount = vm.downloadedSongs.collectAsStateWithLifecycle().value.size
+                    DownloadsRow(count = downloadedCount) { navController.navigate("downloads") }
+                }
                 when (val state = playlists) {
                     is LoadState.Loading -> item { LoadingState() }
                     is LoadState.Failed -> item { ErrorState(state.message, onRetry = vm::loadPlaylists) }
@@ -241,7 +249,9 @@ fun LibraryTab(
                             SongRow(
                                 song = song,
                                 onClick = { onSongClick(state.value, song) },
-                                onToggleLike = { onToggleLike(song) }
+                                onToggleLike = { onToggleLike(song) },
+                                downloadState = vm.downloadStateFor(song),
+                                onToggleDownload = { vm.toggleDownload(song) }
                             )
                         }
                     }
@@ -296,6 +306,74 @@ private fun LikedSongsRow(count: Int, onClick: () -> Unit) {
     }
 }
 
+@Composable
+private fun DownloadsRow(count: Int, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Brass),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.DownloadDone, contentDescription = null, tint = Ink, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text("Downloaded", style = MaterialTheme.typography.titleMedium)
+            Text("$count songs available offline", style = MaterialTheme.typography.bodySmall, color = Stone)
+        }
+    }
+}
+
+/**
+ * Downloaded songs, playable straight from local storage — the one screen
+ * in the app that works with no server connection at all, since it reads
+ * entirely from DownloadManager's local index rather than the network.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit) {
+    val downloaded by vm.downloadedSongs.collectAsStateWithLifecycle()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Downloaded") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink)
+            )
+        }
+    ) { padding ->
+        Box(Modifier.padding(padding)) {
+            if (downloaded.isEmpty()) {
+                EmptyState("Nothing downloaded yet. Tap the download icon on any song to save it for offline listening.", icon = Icons.Filled.DownloadDone)
+            } else {
+                LazyColumn {
+                    items(downloaded, key = { it.youtubeId }) { song ->
+                        SongRow(
+                            song = song,
+                            onClick = { onSongClick(downloaded, song) },
+                            onToggleLike = { onToggleLike(song) },
+                            downloadState = vm.downloadStateFor(song),
+                            onToggleDownload = { vm.toggleDownload(song) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit) {
@@ -334,7 +412,9 @@ fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onTogg
                         SongRow(
                             song = song,
                             onClick = { onSongClick(state.value, song) },
-                            onToggleLike = { onToggleLike(song) }
+                            onToggleLike = { onToggleLike(song) },
+                            downloadState = vm.downloadStateFor(song),
+                            onToggleDownload = { vm.toggleDownload(song) }
                         )
                     }
                 }

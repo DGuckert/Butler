@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.butler.music.ButlerApp
+import com.butler.music.data.DownloadManager
+import com.butler.music.data.DownloadState
 import com.butler.music.network.ApiClient
 import com.butler.music.network.Playlist
 import com.butler.music.network.Song
@@ -20,7 +22,7 @@ sealed class LoadState<out T> {
     data class Failed(val message: String) : LoadState<Nothing>()
 }
 
-class MainViewModel(private val api: ApiClient) : ViewModel() {
+class MainViewModel(private val api: ApiClient, private val downloads: DownloadManager) : ViewModel() {
 
     private val _library = MutableStateFlow<LoadState<List<Song>>>(LoadState.Loading)
     val library: StateFlow<LoadState<List<Song>>> = _library.asStateFlow()
@@ -133,6 +135,16 @@ class MainViewModel(private val api: ApiClient) : ViewModel() {
     private fun applyLiked(songs: List<Song>): List<Song> =
         songs.map { it.copy(liked = likedIds.contains(it.youtubeId)) }
 
+    val downloadedSongs: StateFlow<List<Song>> = downloads.downloaded
+    val downloadStates: StateFlow<Map<String, DownloadState>> = downloads.states
+
+    fun downloadStateFor(song: Song): DownloadState = downloads.stateFor(song.youtubeId)
+
+    fun toggleDownload(song: Song) = viewModelScope.launch {
+        if (downloads.isDownloaded(song.youtubeId)) downloads.delete(song.youtubeId)
+        else downloads.download(song, api)
+    }
+
     private fun mapLoaded(state: LoadState<List<Song>>, transform: (List<Song>) -> List<Song>): LoadState<List<Song>> =
         if (state is LoadState.Loaded) LoadState.Loaded(transform(state.value)) else state
 
@@ -140,7 +152,7 @@ class MainViewModel(private val api: ApiClient) : ViewModel() {
         fun factory() = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ButlerApp
-                MainViewModel(app.api)
+                MainViewModel(app.api, app.downloads)
             }
         }
     }

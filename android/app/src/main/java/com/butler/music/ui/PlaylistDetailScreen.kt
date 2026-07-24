@@ -52,6 +52,8 @@ fun PlaylistDetailScreen(
                             song = song,
                             onClick = { onSongClick(current.songs, song) },
                             onToggleLike = { onToggleLike(song) },
+                            downloadState = vm.downloadStateFor(song),
+                            onToggleDownload = { vm.toggleDownload(song) },
                             trailing = {
                                 if (current.playlist?.canEdit == true) {
                                     IconButton(onClick = { vm.removeSong(song) }) {

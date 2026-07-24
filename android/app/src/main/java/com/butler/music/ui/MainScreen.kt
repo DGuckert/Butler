@@ -120,6 +120,14 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     onToggleLike = vm::toggleLike
                 )
             }
+            composable("downloads") {
+                DownloadsScreen(
+                    vm,
+                    onBack = { navController.popBackStack() },
+                    onSongClick = { songs, song -> playFrom(songs, song) },
+                    onToggleLike = vm::toggleLike
+                )
+            }
             composable(
                 "playlist/{id}",
                 arguments = listOf(androidx.navigation.navArgument("id") { type = androidx.navigation.NavType.IntType })

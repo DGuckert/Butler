@@ -51,7 +51,9 @@ fun LikedSongsScreen(
                             SongRow(
                                 song = song,
                                 onClick = { onSongClick(state.value, song) },
-                                onToggleLike = { onToggleLike(song) }
+                                onToggleLike = { onToggleLike(song) },
+                                downloadState = vm.downloadStateFor(song),
+                                onToggleDownload = { vm.toggleDownload(song) }
                             )
                         }
                     }

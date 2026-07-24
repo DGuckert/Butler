@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
@@ -39,6 +41,8 @@ fun SongRow(
     song: Song,
     onClick: () -> Unit,
     onToggleLike: (() -> Unit)? = null,
+    downloadState: com.butler.music.data.DownloadState? = null,
+    onToggleDownload: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     showDivider: Boolean = false
 ) {
@@ -75,6 +79,18 @@ fun SongRow(
                     color = Stone,
                     modifier = Modifier.padding(start = 8.dp)
                 )
+            }
+            if (downloadState != null && onToggleDownload != null) {
+                IconButton(onClick = onToggleDownload, modifier = Modifier.size(36.dp)) {
+                    when (downloadState) {
+                        com.butler.music.data.DownloadState.DOWNLOADING ->
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Brass)
+                        com.butler.music.data.DownloadState.DOWNLOADED ->
+                            Icon(Icons.Filled.DownloadDone, contentDescription = "Downloaded, tap to remove", tint = Brass, modifier = Modifier.size(20.dp))
+                        else ->
+                            Icon(Icons.Filled.Download, contentDescription = "Download", tint = Stone, modifier = Modifier.size(20.dp))
+                    }
+                }
             }
             if (onToggleLike != null) {
                 IconButton(onClick = onToggleLike, modifier = Modifier.size(36.dp)) {

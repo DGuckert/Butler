@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val app = application as ButlerApp
-        playerController = PlayerController(this, app.api)
+        playerController = PlayerController(this, app.api, app.downloads)
         playerController.connect()
 
         setContent {

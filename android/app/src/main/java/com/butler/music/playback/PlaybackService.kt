@@ -41,6 +41,7 @@ class PlaybackService : MediaLibraryService() {
 
     private var mediaLibrarySession: MediaLibrarySession? = null
     private lateinit var api: ApiClient
+    private lateinit var downloads: com.butler.music.data.DownloadManager
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
@@ -58,6 +59,7 @@ class PlaybackService : MediaLibraryService() {
         val app = application as ButlerApp
         val prefs = app.prefs
         api = app.api
+        downloads = app.downloads
 
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("Butler-Android")
@@ -134,11 +136,11 @@ class PlaybackService : MediaLibraryService() {
                         browsableItem(HISTORY_ID, "Recently Played"),
                     )
                     parentId == LIKED_ID ->
-                        runCatching { api.liked() }.getOrDefault(emptyList()).map { it.toMediaItem(api) }
+                        runCatching { api.liked() }.getOrDefault(emptyList()).map { it.toMediaItem(api, downloads) }
                     parentId == DAILY_MIX_ID ->
-                        runCatching { api.dailyMix() }.getOrDefault(emptyList()).map { it.toMediaItem(api) }
+                        runCatching { api.dailyMix() }.getOrDefault(emptyList()).map { it.toMediaItem(api, downloads) }
                     parentId == HISTORY_ID ->
-                        runCatching { api.history() }.getOrDefault(emptyList()).map { it.toMediaItem(api) }
+                        runCatching { api.history() }.getOrDefault(emptyList()).map { it.toMediaItem(api, downloads) }
                     parentId == PLAYLISTS_ID ->
                         runCatching { api.playlists() }.getOrDefault(emptyList()).map {
                             browsableItem(PLAYLIST_PREFIX + it.id, it.name, "${it.songCount} songs")
@@ -146,7 +148,7 @@ class PlaybackService : MediaLibraryService() {
                     parentId.startsWith(PLAYLIST_PREFIX) -> {
                         val id = parentId.removePrefix(PLAYLIST_PREFIX).toIntOrNull()
                         if (id == null) emptyList()
-                        else runCatching { api.playlist(id).second }.getOrDefault(emptyList()).map { it.toMediaItem(api) }
+                        else runCatching { api.playlist(id).second }.getOrDefault(emptyList()).map { it.toMediaItem(api, downloads) }
                     }
                     else -> emptyList()
                 }
@@ -164,7 +166,7 @@ class PlaybackService : MediaLibraryService() {
             // server-side, so an unresolvable id just fails the lookup.
             val song = runCatching { api.liked() }.getOrNull()?.firstOrNull { it.youtubeId == mediaId }
                 ?: runCatching { api.history() }.getOrNull()?.firstOrNull { it.youtubeId == mediaId }
-            if (song != null) LibraryResult.ofItem(song.toMediaItem(api), null)
+            if (song != null) LibraryResult.ofItem(song.toMediaItem(api, downloads), null)
             else LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
         }
 
@@ -177,7 +179,7 @@ class PlaybackService : MediaLibraryService() {
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<com.google.common.collect.ImmutableList<MediaItem>>> =
             serviceScope.guavaFuture {
-                val results = runCatching { api.search(query) }.getOrDefault(emptyList()).map { it.toMediaItem(api) }
+                val results = runCatching { api.search(query) }.getOrDefault(emptyList()).map { it.toMediaItem(api, downloads) }
                 LibraryResult.ofItemList(com.google.common.collect.ImmutableList.copyOf(results), params)
             }
 
@@ -195,7 +197,7 @@ class PlaybackService : MediaLibraryService() {
                         ?: runCatching { api.history() }.getOrNull()?.firstOrNull { it.youtubeId == item.mediaId }
                     if (song != null) {
                         runCatching { api.playSong(song.youtubeId) }
-                        song.toMediaItem(api)
+                        song.toMediaItem(api, downloads)
                     } else item
                 }.toMutableList()
             }

@@ -2,6 +2,7 @@ package com.butler.music.playback
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.butler.music.data.DownloadManager
 import com.butler.music.network.ApiClient
 import com.butler.music.network.Song
 
@@ -9,8 +10,14 @@ import com.butler.music.network.Song
  * Shared MediaItem construction so PlayerController (in-app playback) and
  * PlaybackService's Android Auto browse tree build identical items instead
  * of two copies that could quietly drift apart.
+ *
+ * When a song has been downloaded, the local file is used as the playback
+ * URI instead of the network stream -- this is the one place that decision
+ * is made, so offline playback and Auto-over-downloaded-songs both fall out
+ * of it automatically rather than needing separate handling.
  */
-fun Song.toMediaItem(api: ApiClient): MediaItem {
+fun Song.toMediaItem(api: ApiClient, downloads: DownloadManager? = null): MediaItem {
+    val localFile = downloads?.localFile(youtubeId)
     val metadata = MediaMetadata.Builder()
         .setTitle(title)
         .setArtist(artist)
@@ -18,9 +25,10 @@ fun Song.toMediaItem(api: ApiClient): MediaItem {
         .setIsBrowsable(false)
         .setIsPlayable(true)
         .build()
+    val uri = localFile?.let { android.net.Uri.fromFile(it) } ?: android.net.Uri.parse(api.streamUrl(youtubeId))
     return MediaItem.Builder()
         .setMediaId(youtubeId)
-        .setUri(api.streamUrl(youtubeId))
+        .setUri(uri)
         .setMediaMetadata(metadata)
         .build()
 }
