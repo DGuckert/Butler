@@ -38,7 +38,7 @@ import com.butler.music.ui.theme.Surface as ButlerSurface
 import com.butler.music.ui.theme.SurfaceRaised
 
 @Composable
-fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit) {
+fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}) {
     val dailyMix by vm.dailyMix.collectAsStateWithLifecycle()
     val recentlyPlayed by vm.recentlyPlayed.collectAsStateWithLifecycle()
     val recommendations by vm.recommendations.collectAsStateWithLifecycle()
@@ -90,6 +90,7 @@ fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggle
                         song = song,
                         onClick = { onSongClick(state.value, song) },
                         onToggleLike = { onToggleLike(song) },
+                        onArtistClick = { onArtistClick(song.artist) },
                         downloadState = vm.downloadStateFor(song),
                         onToggleDownload = { vm.toggleDownload(song) }
                     )
@@ -176,7 +177,8 @@ fun LibraryTab(
     vm: MainViewModel,
     navController: NavHostController,
     onSongClick: (List<Song>, Song) -> Unit,
-    onToggleLike: (Song) -> Unit
+    onToggleLike: (Song) -> Unit,
+    onArtistClick: (String) -> Unit = {}
 ) {
     val library by vm.library.collectAsStateWithLifecycle()
     val liked by vm.liked.collectAsStateWithLifecycle()
@@ -250,6 +252,7 @@ fun LibraryTab(
                                 song = song,
                                 onClick = { onSongClick(state.value, song) },
                                 onToggleLike = { onToggleLike(song) },
+                                onArtistClick = { onArtistClick(song.artist) },
                                 downloadState = vm.downloadStateFor(song),
                                 onToggleDownload = { vm.toggleDownload(song) }
                             )
@@ -339,7 +342,7 @@ private fun DownloadsRow(count: Int, onClick: () -> Unit) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit) {
+fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}) {
     val downloaded by vm.downloadedSongs.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
@@ -364,6 +367,7 @@ fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<So
                             song = song,
                             onClick = { onSongClick(downloaded, song) },
                             onToggleLike = { onToggleLike(song) },
+                            onArtistClick = { onArtistClick(song.artist) },
                             downloadState = vm.downloadStateFor(song),
                             onToggleDownload = { vm.toggleDownload(song) }
                         )
@@ -376,7 +380,7 @@ fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<So
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit) {
+fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}) {
     var query by remember { mutableStateOf("") }
     val results by vm.searchResults.collectAsStateWithLifecycle()
 
@@ -413,6 +417,7 @@ fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onTogg
                             song = song,
                             onClick = { onSongClick(state.value, song) },
                             onToggleLike = { onToggleLike(song) },
+                            onArtistClick = { onArtistClick(song.artist) },
                             downloadState = vm.downloadStateFor(song),
                             onToggleDownload = { vm.toggleDownload(song) }
                         )

@@ -21,7 +21,8 @@ fun PlaylistDetailScreen(
     playlistId: Int,
     onBack: () -> Unit,
     onSongClick: (List<Song>, Song) -> Unit,
-    onToggleLike: (Song) -> Unit
+    onToggleLike: (Song) -> Unit,
+    onArtistClick: (String) -> Unit = {}
 ) {
     val vm: PlaylistDetailViewModel = viewModel(
         factory = PlaylistDetailViewModel.factory(playlistId)
@@ -52,6 +53,7 @@ fun PlaylistDetailScreen(
                             song = song,
                             onClick = { onSongClick(current.songs, song) },
                             onToggleLike = { onToggleLike(song) },
+                            onArtistClick = { onArtistClick(song.artist) },
                             downloadState = vm.downloadStateFor(song),
                             onToggleDownload = { vm.toggleDownload(song) },
                             trailing = {

@@ -121,6 +121,17 @@ class ApiClient(private val prefs: Prefs) {
 
     suspend fun search(query: String): List<Song> = songsFrom(get("/search?q=${enc(query)}"), "results")
 
+    suspend fun artist(name: String): ArtistPage {
+        val res = get("/artists/${enc(name)}")
+        val info = res.optJSONObject("info")
+        return ArtistPage(
+            name = res.optString("artist", name),
+            bio = info?.optString("bio")?.takeIf { it.isNotBlank() },
+            image = info?.optString("image")?.takeIf { it.isNotBlank() },
+            songs = songsFrom(res, "songs")
+        )
+    }
+
     suspend fun library(sort: String = "date"): List<Song> = songsFrom(get("/library?sort=$sort"), "songs")
 
     suspend fun liked(): List<Song> = songsFrom(get("/liked"), "songs")

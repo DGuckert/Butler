@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +42,7 @@ fun SongRow(
     song: Song,
     onClick: () -> Unit,
     onToggleLike: (() -> Unit)? = null,
+    onArtistClick: (() -> Unit)? = null,
     downloadState: com.butler.music.data.DownloadState? = null,
     onToggleDownload: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
@@ -69,7 +71,14 @@ fun SongRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Stone
+                    color = if (onArtistClick != null) Brass else Stone,
+                    modifier = if (onArtistClick != null) {
+                        Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            onClick = onArtistClick
+                        )
+                    } else Modifier
                 )
             }
             if (song.duration > 0) {

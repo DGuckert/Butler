@@ -49,6 +49,10 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
         player.playQueue(songs, index)
     }
 
+    fun openArtist(name: String) {
+        navController.navigate("artist/${android.net.Uri.encode(name)}")
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,17 +103,18 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
             modifier = Modifier.padding(padding)
         ) {
             composable(Tab.Home.route) {
-                HomeTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike)
+                HomeTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike, onArtistClick = ::openArtist)
             }
             composable(Tab.Search.route) {
-                SearchTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike)
+                SearchTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike, onArtistClick = ::openArtist)
             }
             composable(Tab.Library.route) {
                 LibraryTab(
                     vm,
                     navController,
                     onSongClick = { songs, song -> playFrom(songs, song) },
-                    onToggleLike = vm::toggleLike
+                    onToggleLike = vm::toggleLike,
+                    onArtistClick = ::openArtist
                 )
             }
             composable("liked") {
@@ -117,12 +122,26 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     vm,
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
-                    onToggleLike = vm::toggleLike
+                    onToggleLike = vm::toggleLike,
+                    onArtistClick = ::openArtist
                 )
             }
             composable("downloads") {
                 DownloadsScreen(
                     vm,
+                    onBack = { navController.popBackStack() },
+                    onSongClick = { songs, song -> playFrom(songs, song) },
+                    onToggleLike = vm::toggleLike,
+                    onArtistClick = ::openArtist
+                )
+            }
+            composable(
+                "artist/{name}",
+                arguments = listOf(androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType })
+            ) { backStackEntry ->
+                val name = backStackEntry.arguments?.getString("name")?.let { android.net.Uri.decode(it) } ?: return@composable
+                ArtistScreen(
+                    artistName = name,
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
                     onToggleLike = vm::toggleLike
@@ -137,7 +156,8 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     playlistId = id,
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
-                    onToggleLike = vm::toggleLike
+                    onToggleLike = vm::toggleLike,
+                    onArtistClick = ::openArtist
                 )
             }
         }

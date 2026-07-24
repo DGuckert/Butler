@@ -47,6 +47,13 @@ data class Playlist(
     }
 }
 
+data class ArtistPage(
+    val name: String,
+    val bio: String?,
+    val image: String?,
+    val songs: List<Song>
+)
+
 data class CurrentUser(
     val id: Int,
     val username: String
