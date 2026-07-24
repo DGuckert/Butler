@@ -16,6 +16,11 @@
         android:theme="@style/Theme.Butler"
         android:usesCleartextTraffic="true">
 
+        <!-- Declares this app as a media app to Android Auto / Automotive. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,6 +38,12 @@
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+            <!-- Legacy discovery action: this is how a car head unit / Android
+                 Automotive / Google Assistant finds a media app, even though
+                 playback itself is implemented with the modern Media3 session API. -->
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
 

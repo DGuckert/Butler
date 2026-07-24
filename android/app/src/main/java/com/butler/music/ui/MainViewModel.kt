@@ -34,6 +34,12 @@ class MainViewModel(private val api: ApiClient) : ViewModel() {
     private val _dailyMix = MutableStateFlow<LoadState<List<Song>>>(LoadState.Loading)
     val dailyMix: StateFlow<LoadState<List<Song>>> = _dailyMix.asStateFlow()
 
+    private val _recentlyPlayed = MutableStateFlow<LoadState<List<Song>>>(LoadState.Loading)
+    val recentlyPlayed: StateFlow<LoadState<List<Song>>> = _recentlyPlayed.asStateFlow()
+
+    private val _recommendations = MutableStateFlow<LoadState<List<Song>>>(LoadState.Loading)
+    val recommendations: StateFlow<LoadState<List<Song>>> = _recommendations.asStateFlow()
+
     private val _searchResults = MutableStateFlow<LoadState<List<Song>>>(LoadState.Loaded(emptyList()))
     val searchResults: StateFlow<LoadState<List<Song>>> = _searchResults.asStateFlow()
 
@@ -48,6 +54,8 @@ class MainViewModel(private val api: ApiClient) : ViewModel() {
         loadLiked()
         loadPlaylists()
         loadDailyMix()
+        loadRecentlyPlayed()
+        loadRecommendations()
     }
 
     fun loadLibrary() = viewModelScope.launch {
@@ -85,6 +93,18 @@ class MainViewModel(private val api: ApiClient) : ViewModel() {
         loadDailyMix()
     }
 
+    fun loadRecentlyPlayed() = viewModelScope.launch {
+        _recentlyPlayed.value = LoadState.Loading
+        _recentlyPlayed.value = runCatching { api.history() }
+            .fold({ LoadState.Loaded(applyLiked(it)) }, { LoadState.Failed(it.message ?: "Couldn't load recently played") })
+    }
+
+    fun loadRecommendations() = viewModelScope.launch {
+        _recommendations.value = LoadState.Loading
+        _recommendations.value = runCatching { api.recommendations() }
+            .fold({ LoadState.Loaded(applyLiked(it)) }, { LoadState.Failed(it.message ?: "Couldn't load recommendations") })
+    }
+
     fun search(query: String) = viewModelScope.launch {
         if (query.trim().length < 2) { _searchResults.value = LoadState.Loaded(emptyList()); return@launch }
         _searchResults.value = LoadState.Loading
@@ -101,6 +121,8 @@ class MainViewModel(private val api: ApiClient) : ViewModel() {
             _library.value = mapLoaded(_library.value) { applyLiked(it) }
             _dailyMix.value = mapLoaded(_dailyMix.value) { applyLiked(it) }
             _searchResults.value = mapLoaded(_searchResults.value) { applyLiked(it) }
+            _recentlyPlayed.value = mapLoaded(_recentlyPlayed.value) { applyLiked(it) }
+            _recommendations.value = mapLoaded(_recommendations.value) { applyLiked(it) }
         }
     }
 

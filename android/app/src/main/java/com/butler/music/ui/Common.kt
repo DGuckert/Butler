@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -122,6 +124,50 @@ fun SongArtwork(url: String?, size: androidx.compose.ui.unit.Dp, shape: RoundedC
                 .size(size)
                 .clip(shape)
         )
+    }
+}
+
+/**
+ * A single song as a square-art card, for horizontally-scrolling shelves
+ * like Home's Recently Played / Recommended For You -- mirrors the card
+ * grid on the web app rather than the flat rows used everywhere else,
+ * since these sections are about browsing artwork, not scanning a list.
+ */
+@Composable
+fun SongCard(song: Song, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .width(136.dp)
+            .clickable(onClick = onClick)
+    ) {
+        SongArtwork(song.thumbnail, size = 136.dp, shape = RoundedCornerShape(8.dp))
+        Spacer(Modifier.height(6.dp))
+        Text(
+            song.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            song.artist,
+            style = MaterialTheme.typography.bodySmall,
+            color = Stone,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun SongCardRow(songs: List<Song>, onClick: (Song) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        items(songs, key = { it.youtubeId }) { song ->
+            SongCard(song = song, onClick = { onClick(song) })
+        }
     }
 }
 

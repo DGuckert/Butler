@@ -38,7 +38,23 @@ import com.butler.music.ui.theme.SurfaceRaised
 @Composable
 fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit) {
     val dailyMix by vm.dailyMix.collectAsStateWithLifecycle()
+    val recentlyPlayed by vm.recentlyPlayed.collectAsStateWithLifecycle()
+    val recommendations by vm.recommendations.collectAsStateWithLifecycle()
     LazyColumn(Modifier.fillMaxSize()) {
+        val recent = (recentlyPlayed as? LoadState.Loaded)?.value.orEmpty()
+        if (recent.isNotEmpty()) {
+            item { SectionHeader("Recently Played") }
+            item {
+                SongCardRow(recent) { song -> onSongClick(recent, song) }
+            }
+        }
+        val recs = (recommendations as? LoadState.Loaded)?.value.orEmpty()
+        if (recs.isNotEmpty()) {
+            item { SectionHeader("Recommended For You") }
+            item {
+                SongCardRow(recs) { song -> onSongClick(recs, song) }
+            }
+        }
         item {
             when (val state = dailyMix) {
                 is LoadState.Loaded -> if (state.value.isNotEmpty()) {

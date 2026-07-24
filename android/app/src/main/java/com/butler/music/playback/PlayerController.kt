@@ -3,7 +3,6 @@ package com.butler.music.playback
 import android.content.ComponentName
 import android.content.Context
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -84,7 +83,7 @@ class PlayerController(private val context: Context, private val api: ApiClient)
     fun playQueue(songs: List<Song>, startIndex: Int) {
         val c = controller ?: return
         queueSongs = songs
-        val items = songs.map { it.toMediaItem() }
+        val items = songs.map { it.toMediaItem(api) }
         c.setMediaItems(items, startIndex, 0L)
         c.prepare()
         _state.value = _state.value.copy(queue = songs, currentIndex = startIndex)
@@ -117,19 +116,6 @@ class PlayerController(private val context: Context, private val api: ApiClient)
                 delay(500)
             }
         }
-    }
-
-    private fun Song.toMediaItem(): MediaItem {
-        val metadata = MediaMetadata.Builder()
-            .setTitle(title)
-            .setArtist(artist)
-            .setArtworkUri(thumbnail?.let { android.net.Uri.parse(it) })
-            .build()
-        return MediaItem.Builder()
-            .setMediaId(youtubeId)
-            .setUri(api.streamUrl(youtubeId))
-            .setMediaMetadata(metadata)
-            .build()
     }
 
     fun release() {
