@@ -34,7 +34,7 @@ data class PlayerUiState(
  * simple StateFlow the whole UI layer can collect. There is one instance
  * per process, created lazily from MainActivity.
  */
-class PlayerController(private val context: Context, private val api: ApiClient, private val downloads: com.butler.music.data.DownloadManager? = null) {
+class PlayerController(private val context: Context, val api: ApiClient, private val downloads: com.butler.music.data.DownloadManager? = null) {
 
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()

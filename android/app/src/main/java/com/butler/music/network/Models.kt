@@ -47,6 +47,8 @@ data class Playlist(
     }
 }
 
+data class Lyrics(val synced: String?, val plain: String?)
+
 data class ArtistPage(
     val name: String,
     val bio: String?,

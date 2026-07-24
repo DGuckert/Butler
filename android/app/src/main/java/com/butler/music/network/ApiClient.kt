@@ -121,6 +121,14 @@ class ApiClient(private val prefs: Prefs) {
 
     suspend fun search(query: String): List<Song> = songsFrom(get("/search?q=${enc(query)}"), "results")
 
+    suspend fun lyrics(youtubeId: String): Lyrics {
+        val res = get("/lyrics/$youtubeId")
+        return Lyrics(
+            synced = res.optString("synced").takeIf { it.isNotBlank() },
+            plain = res.optString("plain").takeIf { it.isNotBlank() }
+        )
+    }
+
     suspend fun artist(name: String): ArtistPage {
         val res = get("/artists/${enc(name)}")
         val info = res.optJSONObject("info")

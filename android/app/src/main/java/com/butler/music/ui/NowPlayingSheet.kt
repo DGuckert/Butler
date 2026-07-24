@@ -7,8 +7,15 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -30,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.butler.music.playback.PlayerController
+import kotlinx.coroutines.launch
 import com.butler.music.ui.theme.Brass
 import com.butler.music.ui.theme.Ink
 import com.butler.music.ui.theme.Oxblood
@@ -50,6 +58,27 @@ fun NowPlayingSheet(player: PlayerController, onToggleLike: (com.butler.music.ne
     var userSeeking by remember { mutableStateOf(false) }
     var dragPositionMs by remember { mutableLongStateOf(0L) }
     val positionMs = if (userSeeking) dragPositionMs else state.positionMs
+
+    var showLyrics by remember { mutableStateOf(false) }
+    var lyricsLines by remember(song?.youtubeId) { mutableStateOf<List<Pair<Long, String>>>(emptyList()) }
+    var plainLyrics by remember(song?.youtubeId) { mutableStateOf<String?>(null) }
+    var lyricsLoading by remember(song?.youtubeId) { mutableStateOf(false) }
+    var lyricsError by remember(song?.youtubeId) { mutableStateOf(false) }
+
+    LaunchedEffect(song?.youtubeId, showLyrics) {
+        val yid = song?.youtubeId
+        if (yid != null && showLyrics && lyricsLines.isEmpty() && plainLyrics == null && !lyricsError) {
+            lyricsLoading = true
+            runCatching { player.api.lyrics(yid) }
+                .onSuccess { result ->
+                    val parsed = result.synced?.let { parseLrc(it) } ?: emptyList()
+                    if (parsed.isNotEmpty()) lyricsLines = parsed
+                    else plainLyrics = result.plain ?: ""
+                }
+                .onFailure { lyricsError = true }
+            lyricsLoading = false
+        }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Ink) {
         Column(
@@ -128,10 +157,26 @@ fun NowPlayingSheet(player: PlayerController, onToggleLike: (com.butler.music.ne
                         Icon(Icons.Filled.SkipNext, contentDescription = "Next", modifier = Modifier.size(34.dp))
                     }
                     Spacer(Modifier.weight(1f))
-                    Spacer(Modifier.size(44.dp))
+                    IconButton(onClick = { showLyrics = !showLyrics }, modifier = Modifier.size(44.dp)) {
+                        Text(
+                            "Lyrics",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (showLyrics) Brass else Stone
+                        )
+                    }
                 }
 
-                if (state.queue.size > 1) {
+                if (showLyrics) {
+                    Spacer(Modifier.height(20.dp))
+                    LyricsView(
+                        loading = lyricsLoading,
+                        lines = lyricsLines,
+                        plain = plainLyrics,
+                        error = lyricsError,
+                        positionMs = positionMs,
+                        onSeek = { player.seekTo(it) }
+                    )
+                } else if (state.queue.size > 1) {
                     Spacer(Modifier.height(28.dp))
                     Text(
                         "UP NEXT",
@@ -200,5 +245,68 @@ private fun VinylArtwork(url: String?, spinning: Boolean) {
                 drawCircle(color = Ink, radius = maxRadius * 0.035f, center = center)
             }
         }
+    }
+}
+
+/** Parses standard LRC-format synced lyrics ("[mm:ss.xx]text") into (ms, text) pairs. */
+private fun parseLrc(text: String): List<Pair<Long, String>> {
+    val lineRegex = Regex("""^\[(\d+):(\d+(?:\.\d+)?)\](.*)$""")
+    return text.lines().mapNotNull { raw ->
+        val m = lineRegex.find(raw.trim()) ?: return@mapNotNull null
+        val minutes = m.groupValues[1].toLongOrNull() ?: return@mapNotNull null
+        val seconds = m.groupValues[2].toDoubleOrNull() ?: return@mapNotNull null
+        val lyricText = m.groupValues[3].trim()
+        if (lyricText.isEmpty()) return@mapNotNull null
+        (minutes * 60_000L + (seconds * 1000).toLong()) to lyricText
+    }.sortedBy { it.first }
+}
+
+@Composable
+private fun LyricsView(
+    loading: Boolean,
+    lines: List<Pair<Long, String>>,
+    plain: String?,
+    error: Boolean,
+    positionMs: Long,
+    onSeek: (Long) -> Unit
+) {
+    when {
+        loading -> Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Brass)
+        }
+        error -> Text("Couldn't load lyrics.", color = Stone, modifier = Modifier.padding(vertical = 24.dp))
+        lines.isNotEmpty() -> {
+            val activeIndex = lines.indexOfLast { it.first <= positionMs }.coerceAtLeast(0)
+            val listState = rememberLazyListState()
+            LaunchedEffect(activeIndex) {
+                listState.animateScrollToItem((activeIndex - 2).coerceAtLeast(0))
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth().height(280.dp)
+            ) {
+                itemsIndexed(lines) { i, (timeMs, lyricText) ->
+                    val active = i == activeIndex
+                    Text(
+                        lyricText,
+                        style = if (active) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                        color = if (active) Brass else Stone,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSeek(timeMs) }
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
+        }
+        !plain.isNullOrBlank() -> {
+            LazyColumn(modifier = Modifier.fillMaxWidth().height(280.dp)) {
+                item {
+                    Text(plain, style = MaterialTheme.typography.bodyMedium, color = Stone, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+                }
+            }
+        }
+        else -> Text("No lyrics found for this song.", color = Stone, modifier = Modifier.padding(vertical = 24.dp))
     }
 }
