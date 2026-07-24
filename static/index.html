@@ -789,6 +789,9 @@ document.addEventListener('click',e=>{
   if(e.target.closest('.modal-bg')||e.target.closest('#ctx'))return;
   document.getElementById('user-dropdown').classList.remove('open');
   closeCtx();
+  if(!e.target.closest('#np-screen')&&!e.target.closest('#now-playing')){
+    document.getElementById('np-screen').classList.remove('open');
+  }
 });
 
 // ── Greeting ──────────────────────────────────────────────────────────────────
