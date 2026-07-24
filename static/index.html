@@ -326,7 +326,6 @@ body.player-idle #player{display:none}
 .np-lyric-line.active{color:var(--text);opacity:1;font-size:1.3rem}
 .np-lyric-empty{color:var(--muted);font-size:14px;padding-top:40px;text-align:center}
 @media(min-width:769px){
-  #np-close{display:none}
   #np-screen{max-width:520px;left:auto;right:24px;top:auto;bottom:calc(var(--player-h) + 12px);height:min(640px,calc(100vh - var(--player-h) - 40px));border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,.6);border:1px solid var(--bg3)}
 }
 
@@ -1448,6 +1447,7 @@ function highlightLyrics(){
 
 document.getElementById('now-playing').onclick=e=>{if(!e.target.closest('#now-like'))openNowPlaying()};
 document.getElementById('np-close').onclick=closeNowPlaying;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('np-screen').classList.contains('open'))closeNowPlaying()});
 document.getElementById('np-lyrics-toggle').onclick=()=>{
   const scr=document.getElementById('np-screen');
   toggleLyricsMode(!scr.classList.contains('lyrics-mode'));
