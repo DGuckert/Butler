@@ -1075,8 +1075,24 @@ async function renderAdmin(c){
             <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Keep the original downloaded audio format (usually Opus or AAC) instead of transcoding every song to mp3. Applies to songs downloaded from now on — existing mp3 files aren't affected.</div>
           </span>
         </label>
+        <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--bg4);display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span>
+            <div style="font-weight:600">Manual uploads</div>
+            <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Drop audio files into the server's uploads folder and they're indexed automatically every few minutes. Scan now to index immediately.</div>
+          </span>
+          <button class="btn-sm btn-outline" id="scan-uploads-btn" onclick="scanUploadsNow()">Scan Now</button>
+        </div>
       </div>`;
   }catch(e){c.querySelector('.view').innerHTML=`<div style="font-size:1.8rem;font-weight:800">Admin</div><div class="empty-state">${e.message}</div>`}
+}
+async function scanUploadsNow(){
+  const btn=document.getElementById('scan-uploads-btn');
+  btn.disabled=true; btn.textContent='Scanning\u2026';
+  try{
+    const r=await api('POST','/admin/scan-uploads');
+    toast(r.added?`Indexed ${r.added} new song${r.added!==1?'s':''}`:'No new files found');
+  }catch(e){toast('Scan failed: '+e.message)}
+  btn.disabled=false; btn.textContent='Scan Now';
 }
 async function updateLosslessSetting(checked){
   try{

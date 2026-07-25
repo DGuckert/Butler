@@ -21,11 +21,27 @@ from artist_info import fetch_artist_info
 import scrobbling
 import settings
 from subsonic import router as subsonic_router
+from manual_uploads import scan_uploads
 
 app = FastAPI(title="Butler")
 log_filter.install()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 init_db()
+
+_UPLOAD_SCAN_INTERVAL_SECONDS = 300  # 5 minutes -- frequent enough that a manual drop shows up promptly, without constantly hammering the filesystem
+
+@app.on_event("startup")
+async def _periodic_upload_scan():
+    async def _loop():
+        while True:
+            try:
+                result = scan_uploads()
+                if result["added"]:
+                    print(f"[manual_uploads] indexed {result['added']} new file(s) from the uploads folder")
+            except Exception as e:
+                print(f"[manual_uploads] scan failed: {e}")
+            await asyncio.sleep(_UPLOAD_SCAN_INTERVAL_SECONDS)
+    asyncio.create_task(_loop())
 
 class RegisterRequest(BaseModel):
     username: str
@@ -148,6 +164,11 @@ def update_admin_settings(body: dict, user=Depends(get_current_user)):
     if "lossless_downloads" in body:
         settings.set_setting("lossless_downloads", "1" if body["lossless_downloads"] else "0")
     return {"ok": True}
+
+@app.post("/admin/scan-uploads")
+def trigger_upload_scan(user=Depends(get_current_user)):
+    if user["id"] != 1: raise HTTPException(403, "Admin only")
+    return scan_uploads()
     return {"deleted": True}
 
 # ── Search ────────────────────────────────────────────────────────────────────

@@ -1,9 +1,8 @@
 # Butler
 
-A self-hosted music server, in the same spirit as Jellyfin or Navidrome but built
-around `yt-dlp` instead of a media file library you already own. Download songs,
-organize them into a personal collection, and stream them back from a web UI or
-the native Android app, with playlists, likes, and multi-user family accounts.
+A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into
+a personal library, and stream it from a Spotify-style web UI — crossfade, queue,
+playlists, likes, and multi-user family accounts with invite codes.
 
 ## Features
 
@@ -12,62 +11,40 @@ the native Android app, with playlists, likes, and multi-user family accounts.
 - JWT-based auth (bcrypt password hashing)
 - Song downloading via `yt-dlp`
 - Optional Spotify OAuth integration to import your existing playlists
-- "Daily Mix" generator: builds a personalised playlist from your own library
-  each day using play history and likes (weighted random pick, no external
-  API or AI involved)
+- Optional "Daily Mix" generator: an LLM (via [OpenRouter](https://openrouter.ai))
+  suggests songs based on your listening history, which are then resolved and
+  downloaded automatically
 
-## Clients
+## Requirements
 
-- **Web UI**: served directly by the backend, no separate setup needed.
-- **Android**: a native Kotlin/Compose client with background playback and
-  lock-screen controls, in [`android/`](android/). See its own
-  [README](android/README.md) for build instructions.
+- Python 3.10+
+- `ffmpeg` (required by `yt-dlp` for audio extraction)
 
 ## Setup
 
-### Docker (recommended)
-
 ```bash
-git clone https://github.com/DGuckert/Butler.git
-cd Butler
-cp .env.example .env
+git clone <this-repo>
+cd butler
+bash setup.sh
 ```
 
-Edit `.env` and set a real `SECRET_KEY`:
+This installs dependencies, creates a `music/` folder, and copies `.env.example`
+to `.env`. Edit `.env` — at minimum, set a real `SECRET_KEY`:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-Then:
-
-```bash
-docker compose up -d
-```
-
-Downloaded audio and both SQLite databases persist in a named Docker volume
-(`butler_data`), so they survive rebuilds and updates. Open
-`http://localhost:8080` and register the first account, it becomes the admin
-and can generate invite codes for other users under `/admin`.
-
-### Without Docker
-
-Requires Python 3.10+ and `ffmpeg` (used by `yt-dlp` for audio extraction).
-
-```bash
-git clone https://github.com/DGuckert/Butler.git
-cd Butler
-bash setup.sh
-```
-
-This installs dependencies, creates a `music/` folder, and copies `.env.example`
-to `.env`. Edit `.env` the same way as above, then start the server:
+Then start the server:
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-#### Running as a systemd service
+Open `http://localhost:8080` and register the first account — it becomes the admin
+and can generate invite codes for other users under `/admin`.
+
+### Running as a service
 
 `butler.service.example` is a template systemd unit. Copy it, adjust the paths/user
 for your setup, and enable it:
@@ -78,32 +55,28 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now butler
 ```
 
-### Daily Mix
+### Daily Mix (optional)
 
-Builds automatically from each user's play history and likes, entirely from
-songs already in your library. Trigger a run manually with:
+Set `OPENROUTER_API_KEY` in `.env` to enable it, then trigger a run manually with:
 
 ```bash
 python3 daily_mix.py
 ```
 
-or schedule it (cron / systemd timer, or a container exec) to run once a day.
-No API key or setup required.
+or schedule it (cron / systemd timer) to run once a day.
 
 ## Notes
 
 - Downloaded audio lives in `music/` and the SQLite databases (`butler.db`,
-  `songs_meta.db`) are created at runtime. Neither is tracked in git, since
+  `songs_meta.db`) are created at runtime — neither is tracked in git, since
   they're local to your library.
 - Spotify integration is optional; leave the `SPOTIFY_*` variables blank to skip it.
-
-## Legal
-
-Butler downloads audio via `yt-dlp`, which is against YouTube's Terms of
-Service and, for most commercially released music, copyright law in most
-jurisdictions, personal-use downloading included. It's intended for a small,
-private household setup, not for redistribution. Use it accordingly.
+- Already have music files of your own? Drop them into `uploads/` (any of
+  mp3/m4a/flac/opus/ogg/wav/aac) and Butler indexes them automatically every
+  few minutes — reads embedded tags where present, falls back to parsing
+  "Artist - Title.ext" from the filename otherwise. An admin can also
+  trigger an immediate scan from Family/Admin → Scan Now.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

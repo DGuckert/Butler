@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent
 # .env.example ships, so people leave it blank on purpose) should fall
 # through to the default too, not be treated as "explicitly set to ''".
 MUSIC_DIR = os.getenv("MUSIC_DIR") or str(BASE_DIR / "music")
+UPLOADS_DIR = os.getenv("UPLOADS_DIR") or str(BASE_DIR / "uploads")
 SECRET_KEY = os.getenv("SECRET_KEY") or "changeme"
 DATABASE_URL = os.getenv("DATABASE_URL") or "butler.db"
 SONGS_DB_PATH = os.getenv("SONGS_DB_PATH") or str(BASE_DIR / "songs_meta.db")

@@ -15,8 +15,13 @@ services:
       MUSIC_DIR: /data/music
       DATABASE_URL: /data/butler.db
       SONGS_DB_PATH: /data/songs_meta.db
+      UPLOADS_DIR: /data/uploads
     volumes:
       - butler_data:/data
+      # A real host folder (not just the named volume) so it's easy to drop
+      # files in from outside Docker -- over SMB/NAS, scp, a file manager,
+      # whatever's convenient -- without needing to exec into the container.
+      - ./uploads:/data/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/"]
       interval: 30s
