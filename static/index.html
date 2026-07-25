@@ -1029,7 +1029,7 @@ async function deletePl(pid,name){
 async function renderAdmin(c){
   c.innerHTML=`<div class="view"><div style="font-size:1.8rem;font-weight:800;margin-bottom:20px">Family / Admin</div><div class="empty-state">Loading…</div></div>`;
   try{
-    const [ud, id] = await Promise.all([api('GET','/admin/users'), api('GET','/admin/invites')]);
+    const [ud, id, settingsRes] = await Promise.all([api('GET','/admin/users'), api('GET','/admin/invites'), api('GET','/admin/settings')]);
     const v=c.querySelector('.view');
     const unusedInvites=id.invites.filter(i=>!i.used_by);
     v.innerHTML=`<div style="font-size:1.8rem;font-weight:800;margin-bottom:20px">Family / Admin</div>
@@ -1064,8 +1064,25 @@ async function renderAdmin(c){
         ${id.invites.filter(i=>i.used_by).length?`
           <div style="margin-top:14px;font-size:12px;color:var(--muted)">Used codes: ${id.invites.filter(i=>i.used_by).map(i=>`${i.code.slice(0,8)}… → ${i.used_by_name}`).join(', ')}</div>
         `:''}
+      </div>
+
+      <div style="margin-top:20px;padding:20px;background:var(--bg3);border-radius:8px">
+        <div style="font-weight:700;margin-bottom:6px">Server Settings</div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-top:12px">
+          <input type="checkbox" id="settings-lossless" ${settingsRes.lossless_downloads?'checked':''} style="width:auto;margin-top:2px" onchange="updateLosslessSetting(this.checked)">
+          <span>
+            <div style="font-weight:600">Lossless downloads</div>
+            <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Keep the original downloaded audio format (usually Opus or AAC) instead of transcoding every song to mp3. Applies to songs downloaded from now on — existing mp3 files aren't affected.</div>
+          </span>
+        </label>
       </div>`;
   }catch(e){c.querySelector('.view').innerHTML=`<div style="font-size:1.8rem;font-weight:800">Admin</div><div class="empty-state">${e.message}</div>`}
+}
+async function updateLosslessSetting(checked){
+  try{
+    await api('POST','/admin/settings',{lossless_downloads:checked});
+    toast(checked?'Lossless downloads enabled':'Lossless downloads disabled');
+  }catch(e){toast('Failed to update: '+e.message)}
 }
 async function delUser(id,name){if(!confirm(`Remove ${name}?`))return;await api('DELETE',`/admin/users/${id}`);nav('admin')}
 async function genInvite(){

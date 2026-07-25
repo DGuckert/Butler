@@ -12,13 +12,14 @@ from pydantic import BaseModel
 from typing import Optional
 from database import init_db, get_db
 from auth import hash_password, verify_password, create_token, get_current_user
-from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match
+from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match, local_file_path
 from songs_db import search_local, add_track
 from recommend import get_recommendations, get_discovery, get_artist_tracks
 from config import MUSIC_DIR
 from album_art import find_album_art
 from artist_info import fetch_artist_info
 import scrobbling
+import settings
 from subsonic import router as subsonic_router
 
 app = FastAPI(title="Butler")
@@ -133,6 +134,20 @@ def delete_invite(code: str, user=Depends(get_current_user)):
     db = get_db()
     db.execute("DELETE FROM invite_codes WHERE code=? AND used_by IS NULL", (code,))
     db.commit(); db.close()
+    return {"deleted": True}
+
+# ── Server settings (admin only) ──────────────────────────────────
+@app.get("/admin/settings")
+def get_admin_settings(user=Depends(get_current_user)):
+    if user["id"] != 1: raise HTTPException(403, "Admin only")
+    return {"lossless_downloads": settings.get_bool_setting("lossless_downloads")}
+
+@app.post("/admin/settings")
+def update_admin_settings(body: dict, user=Depends(get_current_user)):
+    if user["id"] != 1: raise HTTPException(403, "Admin only")
+    if "lossless_downloads" in body:
+        settings.set_setting("lossless_downloads", "1" if body["lossless_downloads"] else "0")
+    return {"ok": True}
     return {"deleted": True}
 
 # ── Search ────────────────────────────────────────────────────────────────────
@@ -298,7 +313,7 @@ async def play(youtube_id: str, user=Depends(get_current_user)):
     song = dict(song)
     db.execute("INSERT INTO play_history (user_id,song_id) VALUES (?,?)", (user["id"], song["id"]))
     db.commit(); db.close()
-    file_path = os.path.join(MUSIC_DIR, f"{youtube_id}.mp3")
+    file_path = local_file_path(youtube_id)
     if os.path.exists(file_path):
         return {"status": "ready", "stream_url": f"/songs/stream/{youtube_id}", "song": song}
     if not is_downloading(youtube_id):
@@ -316,18 +331,24 @@ async def resolve_song(body: dict, user=Depends(get_current_user)):
 
 @app.get("/songs/status/{youtube_id}")
 def song_status(youtube_id: str, user=Depends(get_current_user)):
-    file_path = os.path.join(MUSIC_DIR, f"{youtube_id}.mp3")
+    file_path = local_file_path(youtube_id)
     if os.path.exists(file_path): return {"status": "ready", "progress": 100}
     if is_downloading(youtube_id): return {"status": "downloading", "progress": get_download_progress(youtube_id)}
     return {"status": "not_downloaded", "progress": 0}
 
+_AUDIO_CONTENT_TYPES = {
+    "mp3": "audio/mpeg", "m4a": "audio/mp4", "opus": "audio/opus",
+    "webm": "audio/webm", "ogg": "audio/ogg", "flac": "audio/flac", "wav": "audio/wav",
+}
+
 @app.get("/songs/stream/{youtube_id}")
 async def stream(youtube_id: str, user=Depends(get_current_user)):
-    file_path = os.path.join(MUSIC_DIR, f"{youtube_id}.mp3")
     for _ in range(240):
+        file_path = local_file_path(youtube_id)
         if os.path.exists(file_path):
+            ext = file_path.rsplit(".", 1)[-1].lower()
             return FileResponse(
-                file_path, media_type="audio/mpeg",
+                file_path, media_type=_AUDIO_CONTENT_TYPES.get(ext, "application/octet-stream"),
                 headers={"Cache-Control": "private, max-age=86400", "Accept-Ranges": "bytes"}
             )
         await asyncio.sleep(0.5)
@@ -339,7 +360,7 @@ def delete_song(youtube_id: str, user=Depends(get_current_user)):
     song = db.execute("SELECT * FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
     if not song: db.close(); raise HTTPException(404, "Not found")
     song = dict(song)
-    path = os.path.join(MUSIC_DIR, f"{youtube_id}.mp3")
+    path = local_file_path(youtube_id)
     if os.path.exists(path): os.remove(path)
     for tbl in ["liked_songs","play_history","playlist_songs"]:
         col = "song_id"

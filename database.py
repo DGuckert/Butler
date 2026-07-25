@@ -93,6 +93,12 @@ def init_db():
     """)
 
     c.execute("""
+        CREATE TABLE IF NOT EXISTS server_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+    c.execute("""
         CREATE TABLE IF NOT EXISTS scrobble_config (
             user_id INTEGER PRIMARY KEY,
             listenbrainz_token TEXT,
@@ -130,6 +136,7 @@ def init_db():
         ("title_key", "TEXT"),
         ("thumbnail", "TEXT"),
         ("shared", "INTEGER DEFAULT 0"),
+        ("file_ext", "TEXT DEFAULT 'mp3'"),
     ]:
         try:
             c.execute(f"ALTER TABLE songs ADD COLUMN {col} {typedef}")

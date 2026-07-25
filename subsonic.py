@@ -29,6 +29,12 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from auth import verify_password
 from database import get_db
 from config import MUSIC_DIR
+from downloader import local_file_path
+
+_AUDIO_CONTENT_TYPES = {
+    "mp3": "audio/mpeg", "m4a": "audio/mp4", "opus": "audio/opus",
+    "webm": "audio/webm", "ogg": "audio/ogg", "flac": "audio/flac", "wav": "audio/wav",
+}
 
 router = APIRouter(prefix="/rest")
 
@@ -105,6 +111,7 @@ async def _authenticate(request: Request):
 
 
 def _song_child(row) -> dict:
+    ext = (row["file_ext"] if "file_ext" in row.keys() else None) or "mp3"
     return {
         "id": str(row["id"]),
         "parent": _album_id(row["artist"], row["album"]),
@@ -113,11 +120,11 @@ def _song_child(row) -> dict:
         "album": _album_display_name(row["album"]),
         "artist": row["artist"] or "Unknown",
         "coverArt": str(row["id"]),
-        "contentType": "audio/mpeg",
-        "suffix": "mp3",
+        "contentType": _AUDIO_CONTENT_TYPES.get(ext, "audio/mpeg"),
+        "suffix": ext,
         "duration": row["duration"] or 0,
         "bitRate": 192,
-        "path": f"{row['artist'] or 'Unknown'}/{row['title']}.mp3",
+        "path": f"{row['artist'] or 'Unknown'}/{row['title']}.{ext}",
         "created": row["added_at"],
         "albumId": _album_id(row["artist"], row["album"]),
         "artistId": _artist_id(row["artist"]),
@@ -429,10 +436,12 @@ async def stream(request: Request):
     db.close()
     if not row or not row["youtube_id"]:
         raise HTTPException(404, "Song not found")
-    file_path = os.path.join(MUSIC_DIR, f"{row['youtube_id']}.mp3")
+    file_path = local_file_path(row["youtube_id"])
     if not os.path.exists(file_path):
         from downloader import ensure_downloaded
         await ensure_downloaded(row["youtube_id"])
+        file_path = local_file_path(row["youtube_id"])
     if not os.path.exists(file_path):
         raise HTTPException(503, "Not downloaded yet")
-    return FileResponse(file_path, media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
+    ext = file_path.rsplit(".", 1)[-1].lower()
+    return FileResponse(file_path, media_type=_AUDIO_CONTENT_TYPES.get(ext, "application/octet-stream"), headers={"Accept-Ranges": "bytes"})
