@@ -929,10 +929,27 @@ def _clean_artist_for_lrclib(a: str) -> str:
     s = re.split(r"\s+(?:ft\.?|feat\.?|featuring|with|x|&|,)\s+", s, maxsplit=1, flags=re.IGNORECASE)[0]
     return s.strip()
 
-def _fetch_lrclib(title: str, artist: str) -> dict | None:
-    """Try get(), then several search() variants. Returns the first hit with lyrics."""
+def _fetch_lrclib(title: str, artist: str, expected_duration=None, tolerance: int = 2) -> dict | None:
+    """Try get(), then several search() variants. Returns the first hit with
+    lyrics whose duration matches our actual track within `tolerance` seconds.
+
+    lrclib is matched by title/artist text alone, same as YouTube search --
+    same problem, same fix. A title match with no duration check can return
+    lyrics for a different version of the song entirely (a remix, a live
+    recording, a different song that just shares a title), which then
+    scrolls out of sync with real playback. Without a known expected
+    duration (nothing to compare against), falls back to the old
+    first-result behavior.
+    """
     headers = {"User-Agent": "Butler/1.0"}
     def _has_lyrics(d): return bool((d or {}).get("plainLyrics") or (d or {}).get("syncedLyrics"))
+    def _duration_ok(d):
+        if not expected_duration:
+            return True
+        dur = (d or {}).get("duration")
+        if not dur:
+            return True  # lrclib didn't give us a duration to check -- can't rule it out
+        return abs(dur - expected_duration) <= tolerance
 
     # Stage 1: exact get
     try:
@@ -943,18 +960,22 @@ def _fetch_lrclib(title: str, artist: str) -> dict | None:
         )
         if r.status_code == 200:
             data = r.json()
-            if _has_lyrics(data):
+            if _has_lyrics(data) and _duration_ok(data):
                 return data
     except Exception:
         pass
 
-    # Stage 2: structured search
+    # Stage 2: structured search -- score every candidate across every query
+    # variant by duration closeness, take the closest one that's actually
+    # within tolerance, instead of the first result of the first query that
+    # happens to have lyrics at all.
     attempts = [
         {"track_name": title, "artist_name": artist},
         {"track_name": title},
         {"q": f"{title} {artist}".strip()},
         {"q": title},
     ]
+    best, best_diff = None, None
     for params in attempts:
         try:
             r = _lrc_requests.get(
@@ -964,12 +985,22 @@ def _fetch_lrclib(title: str, artist: str) -> dict | None:
             if r.status_code != 200:
                 continue
             items = r.json() or []
-            for item in items[:5]:
-                if _has_lyrics(item):
-                    return item
+            for item in items[:8]:
+                if not _has_lyrics(item):
+                    continue
+                if not expected_duration:
+                    return item  # nothing to compare against -- old behavior
+                dur = item.get("duration")
+                if not dur:
+                    continue
+                diff = abs(dur - expected_duration)
+                if diff <= tolerance and (best_diff is None or diff < best_diff):
+                    best, best_diff = item, diff
         except Exception:
             continue
-    return None
+        if best is not None:
+            break
+    return best
 
 @app.get("/lyrics/{youtube_id}")
 def get_lyrics(youtube_id: str, force: bool = False, user=Depends(get_current_user)):
@@ -989,13 +1020,13 @@ def get_lyrics(youtube_id: str, force: bool = False, user=Depends(get_current_us
                 "cached": True,
             }
     song = db.execute(
-        "SELECT title, artist FROM songs WHERE youtube_id=?", (youtube_id,)
+        "SELECT title, artist, duration FROM songs WHERE youtube_id=?", (youtube_id,)
     ).fetchone()
     if not song:
         db.close(); raise HTTPException(404, "Song not found")
     artist = _clean_artist_for_lrclib((song["artist"] or "").strip())
     title = _clean_title_for_lrclib(song["title"] or "", artist=artist)
-    data = _fetch_lrclib(title, artist)
+    data = _fetch_lrclib(title, artist, expected_duration=song["duration"])
     plain = (data or {}).get("plainLyrics") or ""
     synced = (data or {}).get("syncedLyrics") or ""
     source = "lrclib" if data else "none"

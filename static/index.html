@@ -1416,7 +1416,7 @@ async function loadLyricsFor(yid){
     if(!npLyricsLines.length){
       listEl.innerHTML=d.plain
         ?`<div class="np-lyric-line active" style="opacity:1;white-space:pre-wrap">${esc(d.plain)}</div>`
-        :'<div class="np-lyric-empty">No lyrics found for this song.</div>';
+        :'<div class="np-lyric-empty">No matching lyrics found for this recording.</div>';
       return;
     }
     listEl.innerHTML=npLyricsLines.map((l,i)=>`<div class="np-lyric-line" data-i="${i}" data-t="${l.t}">${esc(l.text)}</div>`).join('');
