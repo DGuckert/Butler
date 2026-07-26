@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Matches the app's Ink background color exactly (ui/theme/Theme.kt),
+     not a generic dark gray; was previously #121212, unrelated to the
+     brass/parchment/oxblood theme used everywhere else in the app. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#121212" />
+    <solid android:color="#17140F" />
 </shape>
