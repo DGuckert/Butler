@@ -620,6 +620,47 @@ const BASE='';
 let token=localStorage.getItem('bt')||'';
 let me=null,likedSet=new Set(),playlists=[];
 let queue=[],qi=0,currentSong=null,isPlaying=false,scrobbledFor=null;
+
+// ── Cross-device identity + remote control ──────────────────────────
+const DEVICE_ID=(()=>{let id=localStorage.getItem('device_id');if(!id){id='dev_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('device_id',id)}return id})();
+const DEVICE_NAME=(()=>{
+  const ua=navigator.userAgent;
+  const os=/iPhone|iPad/.test(ua)?'iOS':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Win/.test(ua)?'Windows':/Linux/.test(ua)?'Linux':'Device';
+  const browser=/Edg\//.test(ua)?'Edge':/Brave/.test(ua)?'Brave':/Chrome/.test(ua)?'Chrome':/Firefox/.test(ua)?'Firefox':/Safari/.test(ua)?'Safari':'Browser';
+  return `${browser} on ${os}`;
+})();
+
+function sendHeartbeat(){
+  if(!currentSong?.youtube_id){api('POST','/now-playing/heartbeat',{device_id:DEVICE_ID}).catch(()=>{});return}
+  api('POST','/now-playing/heartbeat',{
+    youtube_id:currentSong.youtube_id,
+    position_ms:Math.floor((audio.currentTime||0)*1000),
+    duration_ms:Math.floor((audio.duration||0)*1000),
+    is_playing:!audio.paused,
+    device:DEVICE_NAME,
+    device_id:DEVICE_ID,
+  }).catch(()=>{});
+}
+setInterval(sendHeartbeat,4000);
+window.addEventListener('beforeunload',()=>{try{navigator.sendBeacon&&navigator.sendBeacon('')}catch(e){}});
+
+async function pollRemoteCommands(){
+  try{
+    const d=await api('GET',`/now-playing/commands?device_id=${encodeURIComponent(DEVICE_ID)}`);
+    for(const cmd of (d.commands||[])){
+      if(cmd.action==='play')audio.play();
+      else if(cmd.action==='pause')audio.pause();
+      else if(cmd.action==='next')document.getElementById('btn-next').click();
+      else if(cmd.action==='prev')document.getElementById('btn-prev').click();
+      else if(cmd.action==='seek'&&audio.duration)audio.currentTime=cmd.seek_ms/1000;
+    }
+  }catch(e){}
+}
+setInterval(pollRemoteCommands,3000);
+
+async function sendRemoteCommand(targetDeviceId,action,seekMs){
+  try{await api('POST','/now-playing/command',{device_id:targetDeviceId,action,seek_ms:seekMs||0})}catch(e){}
+}
 let pollTimer=null,progressTimer=null;
 let shuffleOn=false,repeatMode=0;
 let qOpen=false,ctxSong=null,prevVol=1;
@@ -1842,7 +1883,7 @@ boot();
   padding: 8px 14px 8px 12px;
   font: 600 13px system-ui, -apple-system, Segoe UI, sans-serif;
   cursor: default; max-width: 92vw; overflow: hidden;
-  display: flex; align-items: center; gap: 8px;
+  align-items: center; gap: 8px;
   animation: butler-glow 2.4s ease-in-out infinite;
 }
 #butler-remote.entering { display: flex; animation: butler-slide-in .55s cubic-bezier(.34,1.56,.64,1) both, butler-glow 2.4s ease-in-out 1s infinite; }
@@ -1852,10 +1893,18 @@ boot();
 #butler-remote .be-bars i:nth-child(2) { animation-duration: .7s; animation-delay: .15s; }
 #butler-remote .be-bars i:nth-child(3) { animation-duration: 1.05s; animation-delay: .3s; }
 #butler-remote .be-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70vw; }
+#butler-remote .be-controls { display: inline-flex; gap: 4px; margin-left: 4px; }
+#butler-remote .be-btn { background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 999px; width: 26px; height: 26px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#butler-remote .be-btn:hover { background: rgba(255,255,255,.32); }
 </style>
 <div id=butler-remote>
   <span class=be-bars><i></i><i></i><i></i></span>
   <span class=be-text></span>
+  <span class=be-controls>
+    <button class=be-btn data-action="prev" title="Previous">⏮</button>
+    <button class=be-btn data-action="playpause" title="Play/Pause">⏯</button>
+    <button class=be-btn data-action="next" title="Next">⏭</button>
+  </span>
 </div>
 <script>
 (function(){
@@ -1878,6 +1927,16 @@ boot();
     shown = false;
     setTimeout(()=>{ if(!shown) el.style.display = 'none'; }, 380);
   }
+  let remoteDeviceId = '', remoteIsPlaying = false;
+  el.querySelectorAll('.be-btn').forEach(btn=>{
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (!remoteDeviceId || !window.sendRemoteCommand) return;
+      const action = btn.dataset.action;
+      if (action === 'playpause') window.sendRemoteCommand(remoteDeviceId, remoteIsPlaying ? 'pause' : 'play');
+      else window.sendRemoteCommand(remoteDeviceId, action);
+    };
+  });
   async function tick(){
     try{
       const tok = localStorage.getItem('bt'); if(!tok){ hide(); return; }
@@ -1889,12 +1948,15 @@ boot();
       const localPlaying = a && !a.paused;
       const sameSong = a && a.src && d.song.youtube_id && a.src.indexOf(d.song.youtube_id) !== -1;
       if (localPlaying && sameSong){ hide(); return; }
+      remoteDeviceId = d.device_id || '';
+      remoteIsPlaying = !!d.is_playing;
+      el.querySelector('[data-action="playpause"]').textContent = remoteIsPlaying ? '\u23f8' : '\u25b6';
       const title = (d.song.title || '').slice(0, 80);
       const artist = (d.song.artist || '').slice(0, 40);
       const dev = d.device || 'another device';
       const key = title + '|' + artist + '|' + dev;
-      if (key !== lastKey){ lastKey = key; show(title + ' - ' + artist + '  ·  ' + dev); }
-      else if (!shown){ show(title + ' - ' + artist + '  ·  ' + dev); }
+      if (key !== lastKey){ lastKey = key; show(title + ' - ' + artist + '  \u00b7  ' + dev); }
+      else if (!shown){ show(title + ' - ' + artist + '  \u00b7  ' + dev); }
     }catch(e){ hide(); }
   }
   tick(); setInterval(tick, 3000);

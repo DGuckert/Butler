@@ -1086,16 +1086,28 @@ def get_lyrics(youtube_id: str, force: bool = False, user=Depends(get_current_us
         "cached": False,
     }
 
-# ── Now playing / cross-client sync ───────────────────────────────────────────
+# ── Now playing / cross-client sync + remote control ────────────────
 import time as _np_time
 _NOW_PLAYING: dict[int, dict] = {}
+_PLAYBACK_COMMANDS: dict[int, list[dict]] = {}
 
 @app.post("/now-playing/heartbeat")
 def now_playing_heartbeat(body: dict, user=Depends(get_current_user)):
-    """Clients call this every few seconds while playing so other clients can see."""
+    """Clients call this every few seconds while playing so other clients on
+    the same account can see it, and -- via device_id -- send it remote
+    control commands (see /now-playing/command below)."""
     yid = (body or {}).get("youtube_id") or ""
+    device_id = str((body or {}).get("device_id") or "")[:64]
     if not yid:
-        _NOW_PLAYING.pop(user["id"], None)
+        # An idle device announcing "nothing playing here" should only
+        # clear the shared state if IT was the one that owned it -- not
+        # blow away another device's active session just because this one
+        # happens to poll on the same interval. Without this check, any
+        # second idle tab/device on the account would silently stomp
+        # whatever another device was actively broadcasting.
+        existing = _NOW_PLAYING.get(user["id"])
+        if not existing or existing.get("device_id") == device_id:
+            _NOW_PLAYING.pop(user["id"], None)
         return {"ok": True}
     _NOW_PLAYING[user["id"]] = {
         "youtube_id": yid,
@@ -1103,6 +1115,7 @@ def now_playing_heartbeat(body: dict, user=Depends(get_current_user)):
         "duration_ms": int((body or {}).get("duration_ms") or 0),
         "is_playing": bool((body or {}).get("is_playing")),
         "device": str((body or {}).get("device") or "client")[:32],
+        "device_id": str((body or {}).get("device_id") or "")[:64],
         "updated_at": _np_time.time(),
     }
     return {"ok": True}
@@ -1113,7 +1126,7 @@ def now_playing(user=Depends(get_current_user)):
     if not state:
         return {"song": None}
     age = _np_time.time() - state["updated_at"]
-    if age > 30:  # stale — client probably closed
+    if age > 30:  # stale -- client probably closed
         return {"song": None, "stale_age": age}
     db = get_db()
     song_row = db.execute(
@@ -1135,8 +1148,38 @@ def now_playing(user=Depends(get_current_user)):
         "duration_ms": state["duration_ms"],
         "is_playing": state["is_playing"],
         "device": state["device"],
+        "device_id": state.get("device_id", ""),
         "updated_at": state["updated_at"],
     }
+
+@app.post("/now-playing/command")
+def now_playing_command(body: dict, user=Depends(get_current_user)):
+    """Queue a remote-control command for a specific device on this same
+    account -- e.g. controlling the phone that's actually playing from the
+    laptop you're sitting at. The target device picks these up next time it
+    polls /now-playing/commands (every couple seconds while active)."""
+    target = str((body or {}).get("device_id") or "").strip()
+    action = str((body or {}).get("action") or "").strip()
+    if not target or action not in ("play", "pause", "next", "prev", "seek"):
+        raise HTTPException(400, "Invalid command")
+    cmd = {
+        "target_device_id": target,
+        "action": action,
+        "seek_ms": int((body or {}).get("seek_ms") or 0),
+        "created_at": _np_time.time(),
+    }
+    _PLAYBACK_COMMANDS.setdefault(user["id"], []).append(cmd)
+    return {"ok": True}
+
+@app.get("/now-playing/commands")
+def now_playing_commands(device_id: str, user=Depends(get_current_user)):
+    """A device polls this with its own device_id to receive (and consume)
+    any pending remote-control commands sent to it."""
+    pending = _PLAYBACK_COMMANDS.get(user["id"], [])
+    mine = [c for c in pending if c["target_device_id"] == device_id]
+    if mine:
+        _PLAYBACK_COMMANDS[user["id"]] = [c for c in pending if c["target_device_id"] != device_id]
+    return {"commands": mine}
 
 @app.get("/")
 def serve_index():
