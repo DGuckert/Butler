@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Butler</title>
+<link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -21,7 +22,8 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 
 /* ── Auth ── */
 #auth-screen{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;flex-direction:column;gap:10px;background:linear-gradient(135deg,#17140F,#221D15)}
-.auth-logo{font-size:2rem;font-weight:800;margin-bottom:20px;font-family:var(--font-display)}
+.auth-logo{font-size:2rem;font-weight:800;margin-bottom:20px;font-family:var(--font-display);display:flex;align-items:center;justify-content:center;gap:12px}
+.auth-logo .butler-mark{width:44px;height:44px;flex-shrink:0}
 .auth-logo span{color:var(--green)}
 #auth-screen input{width:300px;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .15s}
 #auth-screen input:focus{border-color:var(--text)}
@@ -42,7 +44,8 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 
 /* ── Sidebar ── */
 #sidebar{width:var(--sidebar-w);background:var(--bg2);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
-.sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0;font-family:var(--font-display)}
+.sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0;font-family:var(--font-display);display:flex;align-items:center;gap:10px}
+.sidebar-logo .butler-mark{width:28px;height:28px;flex-shrink:0}
 .sidebar-logo span{color:var(--green)}
 .sidebar-section{padding:4px 8px;flex-shrink:0}
 .nav-btn{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;transition:color .1s,background .1s;white-space:nowrap}
@@ -258,9 +261,9 @@ body.player-idle #player{display:none}
 /* ── Responsive ── */
 @media(max-width:768px){
   :root{--sidebar-w:60px;--player-h:80px}
-  .sidebar-logo{padding:16px 0 8px;text-align:center}
-  .sidebar-logo span{font-size:1.5rem}
+  .sidebar-logo{padding:16px 0 8px;justify-content:center}
   .sidebar-logo .logo-text{display:none}
+  .sidebar-logo .butler-mark{width:32px;height:32px}
   .nav-btn{padding:10px;justify-content:center;gap:0}
   .nav-btn span,.lib-label,.lib-add,.pl-info,.lib-header span:first-child{display:none}
   .pl-item{justify-content:center;padding:8px 0}
@@ -347,7 +350,7 @@ body.player-idle #player{display:none}
 <body>
 
 <div id="auth-screen">
-  <div class="auth-logo"><span>■</span> <span class="logo-text">Butler</span></div>
+  <div class="auth-logo"><svg class="butler-mark" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="bmDisc" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#E4C878"/><stop offset="55%" stop-color="#C89B3C"/><stop offset="100%" stop-color="#9C7A2E"/></radialGradient><radialGradient id="bmLabel" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#C15F4F"/><stop offset="100%" stop-color="#8B392F"/></radialGradient></defs><circle cx="64" cy="64" r="64" fill="url(#bmDisc)"/><circle cx="64" cy="64" r="64" fill="none" stroke="#17140F" stroke-width="1" opacity="0.35"/><circle cx="64" cy="64" r="58" fill="none" stroke="#17140F" stroke-width="1" opacity="0.35"/><circle cx="64" cy="64" r="52" fill="none" stroke="#17140F" stroke-width="1" opacity="0.35"/><circle cx="64" cy="64" r="48" fill="#17140F"/><circle cx="64" cy="64" r="44" fill="none" stroke="#3D3527" stroke-width="0.8" opacity="0.6"/><circle cx="64" cy="64" r="26" fill="url(#bmLabel)"/><circle cx="64" cy="64" r="26" fill="none" stroke="#17140F" stroke-width="0.8" opacity="0.4"/><text x="64" y="76" font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', serif" font-size="28" font-weight="700" fill="#F0E6CF" text-anchor="middle">B</text><circle cx="64" cy="64" r="4" fill="#17140F"/><circle cx="64" cy="64" r="4" fill="none" stroke="#C89B3C" stroke-width="0.8" opacity="0.5"/></svg> <span class="logo-text">Butler</span></div>
   <input id="au-user" type="text" placeholder="Username" autocomplete="off">
   <input id="au-pass" type="password" placeholder="Password">
   <input id="au-invite" type="text" placeholder="Invite code" style="display:none" autocomplete="off">
@@ -359,7 +362,7 @@ body.player-idle #player{display:none}
 <div id="app">
   <div id="body">
     <div id="sidebar">
-      <div class="sidebar-logo"><span>■</span> <span class="logo-text">Butler</span></div>
+      <div class="sidebar-logo"><svg class="butler-mark" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="bmDisc" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#E4C878"/><stop offset="55%" stop-color="#C89B3C"/><stop offset="100%" stop-color="#9C7A2E"/></radialGradient><radialGradient id="bmLabel" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#C15F4F"/><stop offset="100%" stop-color="#8B392F"/></radialGradient></defs><circle cx="64" cy="64" r="64" fill="url(#bmDisc)"/><circle cx="64" cy="64" r="64" fill="none" stroke="#17140F" stroke-width="1" opacity="0.35"/><circle cx="64" cy="64" r="58" fill="none" stroke="#17140F" stroke-width="1" opacity="0.35"/><circle cx="64" cy="64" r="52" fill="none" stroke="#17140F" stroke-width="1" opacity="0.35"/><circle cx="64" cy="64" r="48" fill="#17140F"/><circle cx="64" cy="64" r="44" fill="none" stroke="#3D3527" stroke-width="0.8" opacity="0.6"/><circle cx="64" cy="64" r="26" fill="url(#bmLabel)"/><circle cx="64" cy="64" r="26" fill="none" stroke="#17140F" stroke-width="0.8" opacity="0.4"/><text x="64" y="76" font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', serif" font-size="28" font-weight="700" fill="#F0E6CF" text-anchor="middle">B</text><circle cx="64" cy="64" r="4" fill="#17140F"/><circle cx="64" cy="64" r="4" fill="none" stroke="#C89B3C" stroke-width="0.8" opacity="0.5"/></svg> <span class="logo-text">Butler</span></div>
       <div class="sidebar-section">
         <div class="nav-btn active" data-v="home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></div>
         <div class="nav-btn" data-v="search"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>Search</span></div>

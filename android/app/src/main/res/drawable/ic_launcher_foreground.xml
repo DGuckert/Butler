@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Vinyl record mark in the app's actual brass/oxblood/ink palette,
-     matching the vinyl motif already used in NowPlayingSheet, replacing
-     the previous generic Spotify green play button left over from before
-     the brass/parchment/oxblood reskin. -->
+<!-- Vinyl record mark with label monogram, matching the redesigned web
+     favicon/sidebar mark (static/icons/favicon.svg) so Android and web
+     share one consistent logo for the first time. Brass disc, ink groove
+     gap, oxblood label, "B" monogram in the app's serif display font,
+     ink spindle hole with a thin brass ring. Scaled to keep the label
+     and monogram inside the 66dp adaptive-icon safe zone so nothing
+     clips under a circular, squircle, or rounded-square mask. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -12,23 +15,65 @@
     <path
         android:fillColor="#C89B3C"
         android:pathData="M54,14 a40,40 0 1,0 0.1,0 Z" />
+    <!-- groove rings, dim brass -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#9C7A2E"
+        android:strokeWidth="0.6"
+        android:strokeAlpha="0.5"
+        android:pathData="M54,17 a37,37 0 1,0 0.1,0 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#9C7A2E"
+        android:strokeWidth="0.6"
+        android:strokeAlpha="0.5"
+        android:pathData="M54,20 a34,34 0 1,0 0.1,0 Z" />
     <!-- groove gap, ink -->
     <path
         android:fillColor="#17140F"
-        android:pathData="M54,20 a34,34 0 1,0 0.1,0 Z" />
-    <!-- outer groove ring, dim brass -->
+        android:pathData="M54,22.5 a31.5,31.5 0 1,0 0.1,0 Z" />
+    <!-- inner groove detail -->
     <path
-        android:fillColor="#8A7638"
-        android:pathData="M54,22 a32,32 0 1,0 0.1,0 Z" />
-    <path
-        android:fillColor="#17140F"
-        android:pathData="M54,23.5 a30.5,30.5 0 1,0 0.1,0 Z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#3D3527"
+        android:strokeWidth="0.5"
+        android:strokeAlpha="0.6"
+        android:pathData="M54,26 a28,28 0 1,0 0.1,0 Z" />
     <!-- label, oxblood -->
     <path
         android:fillColor="#A5453A"
-        android:pathData="M54,38 a16,16 0 1,0 0.1,0 Z" />
+        android:pathData="M54,36 a18,18 0 1,0 0.1,0 Z" />
+    <!-- label monogram "B" -->
+    <path
+        android:fillColor="#F0E6CF"
+        android:pathData="M47,44.5
+                           L47,63.5
+                           L55.5,63.5
+                           C59.5,63.5 62.3,61.6 62.3,58.2
+                           C62.3,55.6 60.7,54 58.3,53.5
+                           C60.3,53 61.7,51.4 61.7,49.1
+                           C61.7,45.9 59,44.5 55.2,44.5
+                           L47,44.5 Z
+                           M51,47.7
+                           L54.7,47.7
+                           C56.7,47.7 57.7,48.5 57.7,49.9
+                           C57.7,51.3 56.7,52.1 54.7,52.1
+                           L51,52.1
+                           L51,47.7 Z
+                           M51,55.1
+                           L55.2,55.1
+                           C57.4,55.1 58.4,56 58.4,57.5
+                           C58.4,59 57.4,59.9 55.2,59.9
+                           L51,59.9
+                           L51,55.1 Z" />
     <!-- spindle hole, ink -->
     <path
         android:fillColor="#17140F"
-        android:pathData="M54,50 a4,4 0 1,0 0.1,0 Z" />
+        android:pathData="M54,50.5 a3.5,3.5 0 1,0 0.1,0 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C89B3C"
+        android:strokeWidth="0.5"
+        android:strokeAlpha="0.5"
+        android:pathData="M54,50.5 a3.5,3.5 0 1,0 0.1,0 Z" />
 </vector>
