@@ -1,82 +1,168 @@
 # Butler
 
-A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into
-a personal library, and stream it from a Spotify-style web UI — crossfade, queue,
-playlists, likes, and multi-user family accounts with invite codes.
+A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into a personal library, and stream it from a Spotify-style web UI with crossfade, queue, playlists, synced lyrics, and multi-user family accounts.
 
 ## Features
 
-- Web player with crossfade, queue, and playlist management
-- Multi-user accounts via invite codes (one user is the admin)
-- JWT-based auth (bcrypt password hashing)
-- Song downloading via `yt-dlp`
-- Optional Spotify OAuth integration to import your existing playlists
-- Optional "Daily Mix" generator: an LLM (via [OpenRouter](https://openrouter.ai))
-  suggests songs based on your listening history, which are then resolved and
-  downloaded automatically
+### Core Playback & Library
+- **Web player** with crossfade, queue management, and persistent playback state
+- **Album art** with fallback to artist images and graceful degradation
+- **Cross-device playback control** — control what's playing from any device
+- **Artist pages** with biography (via MusicBrainz)
+
+### Music Discovery & Personalization
+- **Daily Mix generator** — LLM-powered (via [OpenRouter](https://openrouter.ai)) suggestions based on your listening history, auto-resolved and downloaded
+- **Spotify OAuth integration** to import existing playlists
+- **ListenBrainz scrobbling** — sync your listening history
+
+### Lyrics & Metadata
+- **Live synced lyrics** on web and Android (YouTube + LyricFind resolution with 2-second tolerance)
+- **Album art caching** with automatic cleanup
+- **Song metadata** auto-enriched from downloads and existing files
+
+### Multi-User & Admin
+- **Multi-user accounts** via invite codes (admin can generate and manage)
+- **JWT-based auth** with bcrypt password hashing
+- **Admin panel** for library management, settings, and user control
+
+### Music Management
+- **Download via yt-dlp** with retry logic for resilience
+- **Manual upload folder** with auto-indexing (mp3, m4a, flac, opus, ogg, wav, aac)
+- **Lossless download setting** for admin-controlled audio quality
+- **Automatic folder scanning** every few minutes, or manual "Scan Now" trigger
+
+### API & Compatibility
+- **Subsonic API compatibility** for third-party client support
+- **Offline downloads** on Android with sync across devices
+
+### Mobile (Android)
+- **Native Kotlin/Compose app** with 1:1 feature parity to web
+- **Offline playback** with selective download management
+- **Android Auto support** for in-car control
+- **Real-time playback sync** across devices
 
 ## Requirements
 
 - Python 3.10+
 - `ffmpeg` (required by `yt-dlp` for audio extraction)
+- Docker (for containerized deployment) or systemd (for native service)
 
-## Setup
+## Quick Start
+
+### Docker (Recommended)
 
 ```bash
-git clone <this-repo>
-cd butler
+git clone https://github.com/DGuckert/Butler.git
+cd Butler
+docker compose build butler
+docker compose up -d
+```
+
+Open `http://localhost:8080`, register the first account (becomes admin), and manage users/settings via `/admin`.
+
+### Native Installation
+
+```bash
+git clone https://github.com/DGuckert/Butler.git
+cd Butler
 bash setup.sh
 ```
 
-This installs dependencies, creates a `music/` folder, and copies `.env.example`
-to `.env`. Edit `.env` — at minimum, set a real `SECRET_KEY`:
+Edit `.env` — at minimum, set a real `SECRET_KEY`:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-Then start the server:
+Then start:
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-Open `http://localhost:8080` and register the first account — it becomes the admin
-and can generate invite codes for other users under `/admin`.
+### Systemd Service (Optional)
 
-### Running as a service
-
-`butler.service.example` is a template systemd unit. Copy it, adjust the paths/user
-for your setup, and enable it:
+`butler.service.example` is a template systemd unit:
 
 ```bash
 sudo cp butler.service.example /etc/systemd/system/butler.service
+# Edit paths/user as needed
 sudo systemctl daemon-reload
 sudo systemctl enable --now butler
 ```
 
-### Daily Mix (optional)
+## Configuration
 
-Set `OPENROUTER_API_KEY` in `.env` to enable it, then trigger a run manually with:
+All settings via `.env`:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `SECRET_KEY` | JWT signing key (generate with `secrets.token_urlsafe(48)`) | Required |
+| `OPENROUTER_API_KEY` | Daily Mix LLM suggestions | (optional) |
+| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | OAuth playlist import | (optional) |
+| `LISTENBRAINZ_USER_TOKEN` | Scrobbling support | (optional) |
+| `ADMIN_LOSSLESS_DOWNLOAD` | Force lossless downloads (if source available) | false |
+
+## Features in Detail
+
+### Daily Mix
+
+Enable by setting `OPENROUTER_API_KEY` in `.env`. Trigger manually:
 
 ```bash
 python3 daily_mix.py
 ```
 
-or schedule it (cron / systemd timer) to run once a day.
+Or schedule via cron/systemd timer for automatic daily suggestions.
 
-## Notes
+### Manual Music Library
 
-- Downloaded audio lives in `music/` and the SQLite databases (`butler.db`,
-  `songs_meta.db`) are created at runtime — neither is tracked in git, since
-  they're local to your library.
-- Spotify integration is optional; leave the `SPOTIFY_*` variables blank to skip it.
-- Already have music files of your own? Drop them into `uploads/` (any of
-  mp3/m4a/flac/opus/ogg/wav/aac) and Butler indexes them automatically every
-  few minutes — reads embedded tags where present, falls back to parsing
-  "Artist - Title.ext" from the filename otherwise. An admin can also
-  trigger an immediate scan from Family/Admin → Scan Now.
+Drop files into `uploads/` (any of mp3, m4a, flac, opus, ogg, wav, aac). Butler scans automatically every few minutes, reading embedded tags or parsing "Artist - Title.ext" filenames.
+
+Admins can also trigger immediate scan from **Family/Admin → Scan Now**.
+
+### Offline Download (Android)
+
+Selectively download tracks to your device. Downloaded content syncs across all your devices via the backend.
+
+### Subsonic API
+
+Use any Subsonic-compatible client (Subtracks, Dsub, etc.) to connect to your Butler instance.
+
+## Android App
+
+Build the debug APK:
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+APK is at `app/build/outputs/apk/debug/app-debug.apk`. Install on your device or emulator.
+
+Features:
+- Full playback control with offline support
+- Real-time sync with web player
+- Android Auto for car control
+- Persistent queue and playback state
+
+## Architecture
+
+- **Backend**: FastAPI (Python 3.10+) with SQLite
+- **Web Frontend**: Vanilla JS (no framework)
+- **Android App**: Kotlin with Jetpack Compose
+- **Deployment**: Docker or systemd
+
+Databases (`butler.db`, `songs_meta.db`) and `music/` folder are created at runtime and not tracked in git — they're local to your library.
+
+## Development & Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+**Note**: Butler is aiming toward the Anthropic Claude for Open Source program. Quality contributions and clear commit messages are encouraged.
