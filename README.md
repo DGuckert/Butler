@@ -2,6 +2,17 @@
 
 A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into a personal library, and stream it from a Spotify-style web UI with crossfade, queue, playlists, synced lyrics, and multi-user family accounts.
 
+## Showcase
+
+<p align="center">
+  <img src="docs/screenshots/android-home.jpg" width="200" alt="Home tab: Recently Played, Recommended For You, Daily Mix" />
+  <img src="docs/screenshots/android-search.jpg" width="200" alt="Search results" />
+  <img src="docs/screenshots/android-library.jpg" width="200" alt="Your Library: playlists, liked songs, downloads" />
+  <img src="docs/screenshots/android-nowplaying.jpg" width="200" alt="Now Playing with live synced lyrics" />
+</p>
+
+<p align="center"><em>Android app — Home, Search, Library, and synced-lyrics Now Playing screen</em></p>
+
 ## Features
 
 ### Core Playback & Library
