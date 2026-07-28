@@ -9,8 +9,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.butler.music.ButlerApp
 import com.butler.music.network.Song
 import com.butler.music.ui.theme.Ink
 import com.butler.music.ui.theme.Stone
@@ -24,8 +26,9 @@ fun PlaylistDetailScreen(
     onToggleLike: (Song) -> Unit,
     onArtistClick: (String) -> Unit = {}
 ) {
+    val app = LocalContext.current.applicationContext as ButlerApp
     val vm: PlaylistDetailViewModel = viewModel(
-        factory = PlaylistDetailViewModel.factory(playlistId)
+        factory = PlaylistDetailViewModel.Factory(app.api, app.downloads, playlistId)
     )
     val state by vm.state.collectAsStateWithLifecycle()
 

@@ -39,7 +39,8 @@ private val tabs = listOf(Tab.Home, Tab.Search, Tab.Library)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
-    val vm: MainViewModel = viewModel(factory = MainViewModel.factory())
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.butler.music.ButlerApp
+    val vm: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = MainViewModel.Factory(app.api, app.downloads))
     val navController = rememberNavController()
     var showNowPlaying by remember { mutableStateOf(false) }
     val playerState by player.state.collectAsStateWithLifecycle()

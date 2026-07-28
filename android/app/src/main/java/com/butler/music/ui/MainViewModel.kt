@@ -3,9 +3,6 @@ package com.butler.music.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import com.butler.music.ButlerApp
 import com.butler.music.data.DownloadManager
 import com.butler.music.data.DownloadState
 import com.butler.music.network.ApiClient
@@ -148,12 +145,10 @@ class MainViewModel(private val api: ApiClient, private val downloads: DownloadM
     private fun mapLoaded(state: LoadState<List<Song>>, transform: (List<Song>) -> List<Song>): LoadState<List<Song>> =
         if (state is LoadState.Loaded) LoadState.Loaded(transform(state.value)) else state
 
-    companion object {
-        fun factory() = viewModelFactory {
-            initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ButlerApp
-                MainViewModel(app.api, app.downloads)
-            }
+    class Factory(private val api: ApiClient, private val downloads: DownloadManager) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return MainViewModel(api, downloads) as T
         }
     }
 }

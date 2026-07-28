@@ -33,7 +33,8 @@ fun ArtistScreen(
     onSongClick: (List<Song>, Song) -> Unit,
     onToggleLike: (Song) -> Unit
 ) {
-    val vm: ArtistViewModel = viewModel(factory = ArtistViewModel.factory(artistName))
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.butler.music.ButlerApp
+    val vm: ArtistViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = ArtistViewModel.Factory(app.api, app.downloads, artistName))
     val state by vm.state.collectAsStateWithLifecycle()
 
     Scaffold(

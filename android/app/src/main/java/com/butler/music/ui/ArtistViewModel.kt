@@ -3,9 +3,6 @@ package com.butler.music.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import com.butler.music.ButlerApp
 import com.butler.music.data.DownloadManager
 import com.butler.music.data.DownloadState
 import com.butler.music.network.ApiClient
@@ -41,12 +38,10 @@ class ArtistViewModel(
         else downloads.download(song, api)
     }
 
-    companion object {
-        fun factory(artistName: String) = viewModelFactory {
-            initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ButlerApp
-                ArtistViewModel(app.api, app.downloads, artistName)
-            }
+    class Factory(private val api: ApiClient, private val downloads: DownloadManager, private val artistName: String) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return ArtistViewModel(api, downloads, artistName) as T
         }
     }
 }
