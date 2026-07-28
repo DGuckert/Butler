@@ -307,6 +307,6 @@ private fun LyricsView(
                 }
             }
         }
-        else -> Text("No lyrics found for this song.", color = Stone, modifier = Modifier.padding(vertical = 24.dp))
+        else -> Text("No matching lyrics found for this recording.", color = Stone, modifier = Modifier.padding(vertical = 24.dp))
     }
 }

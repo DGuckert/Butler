@@ -12,10 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.butler.music.ButlerApp
 import com.butler.music.ui.theme.Brass
 import com.butler.music.ui.theme.Ink
 import com.butler.music.ui.theme.Stone
@@ -23,7 +25,8 @@ import com.butler.music.ui.theme.SurfaceRaised
 
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
-    val vm: LoginViewModel = viewModel(factory = LoginViewModel.factory())
+    val app = LocalContext.current.applicationContext as ButlerApp
+    val vm: LoginViewModel = viewModel(factory = LoginViewModel.Factory(app.api, app.prefs))
     var mode by remember { mutableStateOf(LoginMode.LOGIN) }
 
     val fieldColors = TextFieldDefaults.colors(
