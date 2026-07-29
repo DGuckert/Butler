@@ -15,6 +15,12 @@ A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it int
 ## Showcase
 
 <p align="center">
+  <img src="docs/screenshots/web-desktop.jpg" width="720" alt="Butler web player on desktop" />
+</p>
+
+<p align="center"><em>Web player — desktop</em></p>
+
+<p align="center">
   <img src="docs/screenshots/android-home.jpg" width="200" alt="Home tab: Recently Played, Recommended For You, Daily Mix" />
   <img src="docs/screenshots/android-search.jpg" width="200" alt="Search results" />
   <img src="docs/screenshots/android-library.jpg" width="200" alt="Your Library: playlists, liked songs, downloads" />
