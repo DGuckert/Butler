@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 from database import init_db, get_db
-from auth import hash_password, verify_password, create_token, get_current_user
+from auth import hash_password, verify_password, create_token, get_current_user, require_admin
 from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match, local_file_path
 from songs_db import search_local, add_track
 from recommend import get_recommendations, get_discovery, get_artist_tracks
@@ -376,7 +376,11 @@ async def stream(youtube_id: str, user=Depends(get_current_user)):
     raise HTTPException(503, "Download timed out")
 
 @app.delete("/songs/{youtube_id}")
-def delete_song(youtube_id: str, user=Depends(get_current_user)):
+def delete_song(youtube_id: str, user=Depends(require_admin)):
+    # Songs are a shared library, not per-user data — deleting one
+    # removes the file and every user's likes/history/playlist entries
+    # for it. Previously any authenticated user could do this; now
+    # restricted to admin, same as other destructive library actions.
     db = get_db()
     song = db.execute("SELECT * FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
     if not song: db.close(); raise HTTPException(404, "Not found")

@@ -39,3 +39,12 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return dict(user)
+
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    # Admin is currently the account with id 1 (the first registered
+    # user, i.e. whoever set up the server). Centralized here so every
+    # admin-only route shares one check instead of repeating
+    # `user["id"] != 1` inline, which is easy to miss on a new route.
+    if user["id"] != 1:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return user
