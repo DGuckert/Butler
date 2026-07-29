@@ -4,6 +4,12 @@
 
 <h1 align="center">Butler</h1>
 
+<p align="center">
+  <a href="https://github.com/DGuckert/Butler/releases/latest">
+    <img src="https://img.shields.io/github/v/release/DGuckert/Butler?label=latest%20release&color=C89B3C" alt="Latest release" />
+  </a>
+</p>
+
 A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into a personal library, and stream it from a Spotify-style web UI with crossfade, queue, playlists, synced lyrics, and multi-user family accounts.
 
 ## Showcase
@@ -146,20 +152,22 @@ Use any Subsonic-compatible client (Subtracks, Dsub, etc.) to connect to your Bu
 
 ## Android App
 
-Build the debug APK:
-
-```bash
-cd android
-./gradlew :app:assembleDebug
-```
-
-APK is at `app/build/outputs/apk/debug/app-debug.apk`. Install on your device or emulator.
+**[Download the latest release](https://github.com/DGuckert/Butler/releases/latest)** — signed APK, ready to sideload. Point it at your own Butler server on first launch.
 
 Features:
 - Full playback control with offline support
 - Real-time sync with web player
 - Android Auto for car control
 - Persistent queue and playback state
+
+### Building from source
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+Debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Install on your device or emulator.
 
 ## Architecture
 
