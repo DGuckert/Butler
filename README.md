@@ -1,4 +1,8 @@
-# Butler
+<p align="center">
+  <img src="docs/logo/butler-mark.svg" width="96" alt="Butler logo" />
+</p>
+
+<h1 align="center">Butler</h1>
 
 A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it into a personal library, and stream it from a Spotify-style web UI with crossfade, queue, playlists, synced lyrics, and multi-user family accounts.
 
