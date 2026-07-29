@@ -1,79 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Vinyl record mark with label monogram, matching the redesigned web
-     favicon/sidebar mark (static/icons/favicon.svg) so Android and web
-     share one consistent logo for the first time. Brass disc, ink groove
-     gap, oxblood label, "B" monogram in the app's serif display font,
-     ink spindle hole with a thin brass ring. Scaled to keep the label
-     and monogram inside the 66dp adaptive-icon safe zone so nothing
-     clips under a circular, squircle, or rounded-square mask. -->
+<!-- Bowtie mark, matching the redesigned web favicon/sidebar logo and
+     docs/logo/butler-mark.svg. Replaces the earlier vinyl-disc-with-
+     monogram foreground. Two facing wedge "wings" (brass gradient) with
+     an oxblood knot at center — ties to "Butler" via formal-wear framing
+     without being a literal illustration, and doubles as an abstract
+     play/volume motif. Path data scaled and centered from the source
+     SVG's 240x240 viewBox down to this 108dp canvas, keeping the wings
+     inside the 66dp adaptive-icon safe zone (verified: bounding box is
+     roughly x 25-83, y 38-70, well clear of the ~21-87 safe edges) so
+     nothing clips under a circular, squircle, or rounded-square mask. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- outer disc, brass -->
-    <path
-        android:fillColor="#C89B3C"
-        android:pathData="M54,14 a40,40 0 1,0 0.1,0 Z" />
-    <!-- groove rings, dim brass -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#9C7A2E"
-        android:strokeWidth="0.6"
-        android:strokeAlpha="0.5"
-        android:pathData="M54,17 a37,37 0 1,0 0.1,0 Z" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#9C7A2E"
-        android:strokeWidth="0.6"
-        android:strokeAlpha="0.5"
-        android:pathData="M54,20 a34,34 0 1,0 0.1,0 Z" />
-    <!-- groove gap, ink -->
-    <path
-        android:fillColor="#17140F"
-        android:pathData="M54,22.5 a31.5,31.5 0 1,0 0.1,0 Z" />
-    <!-- inner groove detail -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#3D3527"
-        android:strokeWidth="0.5"
-        android:strokeAlpha="0.6"
-        android:pathData="M54,26 a28,28 0 1,0 0.1,0 Z" />
-    <!-- label, oxblood -->
+
+    <!-- left wing -->
+    <path android:pathData="M 27.76,38.64 C 38.0,43.12 47.6,48.88 52.72,54.0 C 47.6,59.12 38.0,64.88 27.76,69.36 C 25.2,62.32 25.2,45.68 27.76,38.64 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="25.2"
+                android:startY="38.64"
+                android:endX="52.72"
+                android:endY="69.36"
+                android:startColor="#DBAF4E"
+                android:endColor="#A9812F" />
+        </aapt:attr>
+    </path>
+
+    <!-- right wing -->
+    <path android:pathData="M 80.24,38.64 C 70.0,43.12 60.4,48.88 55.28,54.0 C 60.4,59.12 70.0,64.88 80.24,69.36 C 82.8,62.32 82.8,45.68 80.24,38.64 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="82.8"
+                android:startY="38.64"
+                android:endX="55.28"
+                android:endY="69.36"
+                android:startColor="#DBAF4E"
+                android:endColor="#A9812F" />
+        </aapt:attr>
+    </path>
+
+    <!-- oxblood knot -->
     <path
         android:fillColor="#A5453A"
-        android:pathData="M54,36 a18,18 0 1,0 0.1,0 Z" />
-    <!-- label monogram "B" -->
-    <path
-        android:fillColor="#F0E6CF"
-        android:pathData="M47,44.5
-                           L47,63.5
-                           L55.5,63.5
-                           C59.5,63.5 62.3,61.6 62.3,58.2
-                           C62.3,55.6 60.7,54 58.3,53.5
-                           C60.3,53 61.7,51.4 61.7,49.1
-                           C61.7,45.9 59,44.5 55.2,44.5
-                           L47,44.5 Z
-                           M51,47.7
-                           L54.7,47.7
-                           C56.7,47.7 57.7,48.5 57.7,49.9
-                           C57.7,51.3 56.7,52.1 54.7,52.1
-                           L51,52.1
-                           L51,47.7 Z
-                           M51,55.1
-                           L55.2,55.1
-                           C57.4,55.1 58.4,56 58.4,57.5
-                           C58.4,59 57.4,59.9 55.2,59.9
-                           L51,59.9
-                           L51,55.1 Z" />
-    <!-- spindle hole, ink -->
-    <path
-        android:fillColor="#17140F"
-        android:pathData="M54,50.5 a3.5,3.5 0 1,0 0.1,0 Z" />
+        android:pathData="M54,49.84 a4.16,4.16 0 1,0 0.1,0 Z" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#C89B3C"
-        android:strokeWidth="0.5"
-        android:strokeAlpha="0.5"
-        android:pathData="M54,50.5 a3.5,3.5 0 1,0 0.1,0 Z" />
+        android:strokeColor="#17140F"
+        android:strokeWidth="0.48"
+        android:strokeAlpha="0.4"
+        android:pathData="M54,49.84 a4.16,4.16 0 1,0 0.1,0 Z" />
 </vector>
