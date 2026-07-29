@@ -179,5 +179,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 MIT — see [LICENSE](LICENSE).
 
 ---
-
-**Note**: Butler is aiming toward the Anthropic Claude for Open Source program. Quality contributions and clear commit messages are encouraged.
