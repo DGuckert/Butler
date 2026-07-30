@@ -125,22 +125,11 @@ All settings via `.env`:
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `SECRET_KEY` | JWT signing key (generate with `secrets.token_urlsafe(48)`) | Required |
-| `OPENROUTER_API_KEY` | Daily Mix LLM suggestions | (optional) |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | OAuth playlist import | (optional) |
 | `LISTENBRAINZ_USER_TOKEN` | Scrobbling support | (optional) |
 | `ADMIN_LOSSLESS_DOWNLOAD` | Force lossless downloads (if source available) | false |
 
 ## Features in Detail
-
-### Daily Mix
-
-Enable by setting `OPENROUTER_API_KEY` in `.env`. Trigger manually:
-
-```bash
-python3 daily_mix.py
-```
-
-Or schedule via cron/systemd timer for automatic daily suggestions.
 
 ### Manual Music Library
 
