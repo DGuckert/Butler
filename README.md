@@ -38,8 +38,7 @@ A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it int
 - **Artist pages** with biography (via MusicBrainz)
 
 ### Music Discovery & Personalization
-- **Daily Mix generator**
-weighted random samples no setup but only works in music in your library
+- **Daily Mix generator** — weighted random samples, no setup, but only pulls from music already in your library
 - **Spotify OAuth integration** to import existing playlists
 - **ListenBrainz scrobbling** — sync your listening history
 
