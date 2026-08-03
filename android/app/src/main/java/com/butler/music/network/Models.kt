@@ -61,4 +61,9 @@ data class CurrentUser(
     val username: String
 )
 
+data class OidcProvider(
+    val key: String,
+    val displayName: String
+)
+
 class ApiException(message: String, val code: Int = 0) : Exception(message)

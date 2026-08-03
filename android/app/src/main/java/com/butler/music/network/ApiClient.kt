@@ -109,6 +109,32 @@ class ApiClient(private val prefs: Prefs) {
         return CurrentUser(0, res.optString("username"))
     }
 
+    /** Confirms `url` is actually a reachable Butler server (used by the
+     * server-select screen before saving it) and, since it's already a
+     * round trip there, doubles as fetching which SSO providers it has
+     * enabled -- no separate "ping" endpoint needed. Throws if the
+     * address doesn't respond or isn't Butler. */
+    suspend fun oidcProviders(serverUrl: String? = null): List<OidcProvider> = withContext(Dispatchers.IO) {
+        val url = (serverUrl ?: baseUrl) + "/auth/oidc/status"
+        val req = Request.Builder().url(url).get().build()
+        val res = execute(req)
+        val arr = res.optJSONArray("providers") ?: JSONArray()
+        (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            OidcProvider(o.optString("key"), o.optString("display_name"))
+        }
+    }
+
+    /** SSO logins complete in the browser, not through login()/register(),
+     * so once the token comes back via the deep link this is how the app
+     * learns who actually just logged in. */
+    suspend fun me(): CurrentUser {
+        val res = get("/auth/me")
+        val username = res.optString("username")
+        prefs.username = username
+        return CurrentUser(res.optInt("id"), username)
+    }
+
     /** Checks that a server is reachable and looks like Butler before we try to log in. */
     suspend fun ping(serverUrl: String): Boolean = withContext(Dispatchers.IO) {
         runCatching {

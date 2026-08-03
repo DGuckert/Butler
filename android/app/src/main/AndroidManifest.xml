@@ -30,6 +30,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- SSO login (Google/Authelia/etc via Chrome Custom Tabs) lands
+                 back here: the Butler server redirects to this custom
+                 scheme with the session token in the query string once the
+                 provider flow completes. Scheme matches applicationId so it
+                 can't collide with another app's deep link. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.butler.music" android:host="oidc-callback" />
+            </intent-filter>
         </activity>
 
         <service

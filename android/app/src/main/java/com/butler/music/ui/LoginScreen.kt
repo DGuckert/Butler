@@ -1,5 +1,6 @@
 package com.butler.music.ui
 
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.butler.music.ButlerApp
 import com.butler.music.ui.theme.Brass
@@ -24,10 +26,18 @@ import com.butler.music.ui.theme.Stone
 import com.butler.music.ui.theme.SurfaceRaised
 
 @Composable
-fun LoginScreen(onLoggedIn: () -> Unit) {
+fun LoginScreen(onLoggedIn: () -> Unit, onChangeServer: () -> Unit, oidcError: String? = null) {
     val app = LocalContext.current.applicationContext as ButlerApp
+    val context = LocalContext.current
     val vm: LoginViewModel = viewModel(factory = LoginViewModel.Factory(app.api, app.prefs))
     var mode by remember { mutableStateOf(LoginMode.LOGIN) }
+    // Matches the web login page's behavior: the invite field stays
+    // hidden until either Register mode is picked, or an SSO attempt
+    // comes back needing one -- most people never need to see it at all.
+    var showInviteField by remember { mutableStateOf(false) }
+    LaunchedEffect(oidcError) { if (oidcError != null) showInviteField = true }
+
+    LaunchedEffect(Unit) { vm.loadSsoProviders() }
 
     val fieldColors = TextFieldDefaults.colors(
         focusedContainerColor = SurfaceRaised,
@@ -57,23 +67,17 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         Text("Butler", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Your library, kept.",
-            style = MaterialTheme.typography.bodyMedium,
+            vm.serverUrl,
+            style = MaterialTheme.typography.bodySmall,
             color = Stone
         )
-        Spacer(Modifier.height(36.dp))
-
-        TextField(
-            value = vm.serverUrl,
-            onValueChange = { vm.serverUrl = it },
-            label = { Text("Server address") },
-            placeholder = { Text("http://192.168.1.10:8080") },
-            singleLine = true,
-            colors = fieldColors,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            "Not your server?",
+            style = MaterialTheme.typography.bodySmall,
+            color = Brass,
+            modifier = Modifier.clickableNoIndication(onChangeServer)
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(28.dp))
 
         SegmentedModeSwitch(mode) { mode = it }
         Spacer(Modifier.height(14.dp))
@@ -97,12 +101,12 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (mode == LoginMode.REGISTER) {
+        if (mode == LoginMode.REGISTER || showInviteField) {
             Spacer(Modifier.height(14.dp))
             TextField(
                 value = vm.inviteCode,
                 onValueChange = { vm.inviteCode = it },
-                label = { Text("Invite code") },
+                label = { Text(if (mode == LoginMode.REGISTER) "Invite code" else "Invite code (for SSO sign-up)") },
                 singleLine = true,
                 colors = fieldColors,
                 modifier = Modifier.fillMaxWidth()
@@ -114,6 +118,14 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         if (vm.error != null) {
             Text(
                 vm.error ?: "",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 14.dp)
+            )
+        }
+        if (oidcError != null) {
+            Text(
+                oidcError,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 14.dp)
@@ -134,6 +146,40 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 Text(if (mode == LoginMode.LOGIN) "Log in" else "Create account", style = MaterialTheme.typography.labelLarge)
             }
         }
+
+        // SSO buttons -- one per provider this server has enabled, same
+        // idea as the web login page. Opens in a Custom Tab rather than
+        // an in-app WebView so the person gets their browser's real
+        // session (saved Google/Authelia logins, password manager, etc)
+        // instead of having to type credentials into a view Butler
+        // controls. The provider's flow finishes by redirecting to
+        // com.butler.music://oidc-callback, which MainActivity picks up.
+        if (vm.ssoProviders.isNotEmpty()) {
+            Spacer(Modifier.height(18.dp))
+            SsoDivider()
+            Spacer(Modifier.height(10.dp))
+            vm.ssoProviders.forEach { provider ->
+                OutlinedButton(
+                    onClick = {
+                        val url = vm.ssoLoginUrl(provider.key).toUri()
+                        CustomTabsIntent.Builder().build().launchUrl(context, url)
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = androidx.compose.ui.graphics.Color(0xFFF0E6CF)),
+                    modifier = Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp)
+                ) {
+                    Text(provider.displayName, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SsoDivider() {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).height(1.dp).background(SurfaceRaised))
+        Text("  or  ", color = Stone, style = MaterialTheme.typography.bodySmall)
+        Box(Modifier.weight(1f).height(1.dp).background(SurfaceRaised))
     }
 }
 
