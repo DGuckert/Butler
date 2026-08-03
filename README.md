@@ -50,6 +50,7 @@ A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it int
 ### Multi-User & Admin
 - **Multi-user accounts** via invite codes (admin can generate and manage)
 - **JWT-based auth** with bcrypt password hashing
+- **Single sign-on (SSO)** via Google or any self-hosted OIDC provider (Authelia, Authentik, Keycloak, ...) -- optional, on top of normal accounts, configurable per deployment
 - **Admin panel** for library management, settings, and user control
 
 ### Music Management
@@ -67,6 +68,7 @@ A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it int
 - **Offline playback** with selective download management
 - **Android Auto support** for in-car control
 - **Real-time playback sync** across devices
+- **SSO login** via Chrome Custom Tabs, same providers as the web login
 
 ## Requirements
 
@@ -127,7 +129,12 @@ All settings via `.env`:
 | `SECRET_KEY` | JWT signing key (generate with `secrets.token_urlsafe(48)`) | Required |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | OAuth playlist import | (optional) |
 | `LISTENBRAINZ_USER_TOKEN` | Scrobbling support | (optional) |
-| `ADMIN_LOSSLESS_DOWNLOAD` | Force lossless downloads (if source available) | false |
+
+See [Single Sign-On](#single-sign-on-sso) below for the SSO-specific variables.
+
+A couple of settings are runtime-toggleable from the admin panel instead of `.env` (Admin tab, "Server Settings" -- takes effect immediately, no restart):
+- **Lossless downloads** -- keep the original downloaded format (Opus/AAC) instead of transcoding to mp3. Only affects songs downloaded from then on.
+- **Automatic downloads** -- whether playing/searching for a song not yet in the library triggers a yt-dlp download. Turn off to freeze the library to what's already downloaded or manually uploaded; existing songs still play normally either way.
 
 ## Features in Detail
 
@@ -144,6 +151,38 @@ Selectively download tracks to your device. Downloaded content syncs across all 
 ### Subsonic API
 
 Use any Subsonic-compatible client (Subtracks, Dsub, etc.) to connect to your Butler instance.
+
+### Single Sign-On (SSO)
+
+Butler supports logging in through Google or any self-hosted OIDC provider (Authelia, Authentik, Keycloak, and similar), on top of the normal username/password accounts -- enable as many at once as you want, and each shows up as its own button on the login screen.
+
+Set `OIDC_PROVIDERS` in `.env` to a comma-separated list of provider keys, then fill in that provider's credentials:
+
+```bash
+# One redirect URI for all providers -- register this exact URL with
+# every provider's console (Google Cloud Console, your Authelia client, etc).
+OIDC_REDIRECT_URI=https://your-domain.example/auth/oidc/callback
+OIDC_PROVIDERS=google,authelia
+
+# Google -- OAuth Client ID, type "Web application", at
+# https://console.cloud.google.com/apis/credentials
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Any self-hosted OIDC provider -- pick your own key (lowercase, no
+# spaces), add it to OIDC_PROVIDERS, then set these three with that key
+# as the prefix. Example for a provider key of "authelia":
+AUTHELIA_ISSUER=https://auth.your-domain.example
+AUTHELIA_CLIENT_ID=butler
+AUTHELIA_CLIENT_SECRET=
+AUTHELIA_DISPLAY_NAME=Sign in with Authelia   # optional, shown on the login button
+```
+
+A brand-new SSO identity needs an invite code the first time, exactly like a normal registration -- except if the server has no users yet, in which case the first SSO login bootstraps the admin account. Once linked, that identity logs in with just the button, no code needed.
+
+On Android, SSO opens in a Chrome Custom Tab rather than an in-app WebView (so you get your browser's existing session/password manager) and hands control back to the app via a deep link once the provider redirects back.
+
+See `.env.example` for the full list of variables, including the exact fields Google's/each self-hosted provider's setup asks for.
 
 ## Android App
 
