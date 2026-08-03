@@ -8,6 +8,11 @@ from database import get_db
 
 DEFAULTS = {
     "lossless_downloads": "0",
+    # Auto-download via yt-dlp when a song is played/searched but not yet
+    # local. Defaults on (existing behavior) -- an admin can flip this off
+    # to freeze the library to whatever's already downloaded or manually
+    # uploaded, without touching yt-dlp's presence/config at all.
+    "ytdlp_downloads_enabled": "1",
 }
 
 

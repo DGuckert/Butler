@@ -68,6 +68,27 @@ def init_db():
         )
     """)
 
+    # API keys -- lets SSO-only accounts (whose real password_hash is a
+    # locked random value, see the OIDC migration below) still authenticate
+    # third-party Subsonic clients and other non-browser tools that only
+    # understand a username/password pair. key_hash is SHA-256, not bcrypt:
+    # these are 256-bit random tokens the user never chooses, not
+    # human-chosen passwords, so there's no brute-force-slowing benefit to
+    # bcrypt here and a fast hash keeps lookup an indexed exact match
+    # instead of iterating every stored key through a bcrypt verify.
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            label TEXT NOT NULL,
+            key_hash TEXT NOT NULL UNIQUE,
+            key_prefix TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
     c.execute("""
         CREATE TABLE IF NOT EXISTS play_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,6 +165,26 @@ def init_db():
     try:
         c.execute("ALTER TABLE playlists ADD COLUMN shared INTEGER DEFAULT 0")
     except: pass
+
+    # OIDC / SSO login support. password_hash stays NOT NULL for every user
+    # (including OIDC-only accounts, which get an unusable locked hash --
+    # see auth.py create_oidc_locked_hash) so we avoid an SQLite table
+    # rebuild just to relax that constraint. oidc_issuer is stored per-user
+    # (not just read from config) so a future issuer change doesn't orphan
+    # existing linked accounts, and so the partial unique index below can
+    # scope correctly if that ever happens.
+    for col, typedef in [
+        ("oidc_subject", "TEXT"),
+        ("oidc_issuer", "TEXT"),
+    ]:
+        try:
+            c.execute(f"ALTER TABLE users ADD COLUMN {col} {typedef}")
+        except: pass
+    c.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oidc
+        ON users(oidc_issuer, oidc_subject)
+        WHERE oidc_subject IS NOT NULL
+    """)
 
     # Backfills
     c.execute("""

@@ -4,7 +4,7 @@ import os
 import asyncio
 import secrets
 import log_filter
-from fastapi import FastAPI, HTTPException, Depends, Query, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Depends, Query, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -101,9 +101,18 @@ def login(req: LoginRequest):
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE username=?", (req.username,)).fetchone()
     db.close()
-    if not user or not verify_password(req.password, user["password_hash"]):
-        raise HTTPException(401, "Invalid credentials")
-    return {"token": create_token(user["id"]), "username": user["username"]}
+    if user and verify_password(req.password, user["password_hash"]):
+        return {"token": create_token(user["id"]), "username": user["username"]}
+
+    # Same API-key fallback as the Subsonic layer (see subsonic.py's
+    # _authenticate) -- lets a generated key stand in for a real password
+    # here too, not just for third-party Subsonic clients.
+    import api_keys
+    key_user = api_keys.find_user_by_key(req.password)
+    if key_user and key_user["username"] == req.username:
+        return {"token": create_token(key_user["id"]), "username": key_user["username"]}
+
+    raise HTTPException(401, "Invalid credentials")
 
 @app.get("/auth/me")
 def me(user=Depends(get_current_user)):
@@ -120,6 +129,147 @@ def change_password(req: ChangePasswordRequest, user=Depends(get_current_user)):
                (hash_password(req.new_password), user["id"]))
     db.commit(); db.close()
     return {"updated": True}
+
+# ── API keys ────────────────────────────────────────────────────────────
+# Self-service, per-user -- not admin-only. Anyone (SSO-only or not) can
+# generate one for use with a third-party Subsonic client or script. See
+# api_keys.py for why these exist and why they're hashed differently from
+# real passwords.
+
+@app.get("/auth/api-keys")
+def list_api_keys(user=Depends(get_current_user)):
+    import api_keys
+    return {"keys": api_keys.list_keys(user["id"])}
+
+@app.post("/auth/api-keys")
+def create_api_key(body: dict, user=Depends(get_current_user)):
+    import api_keys
+    label = (body or {}).get("label", "")
+    key = api_keys.generate_key(user["id"], label)
+    # The only response that will ever contain the plaintext key -- the
+    # frontend needs to show it once and make that unmistakable.
+    return {"key": key}
+
+@app.delete("/auth/api-keys/{key_id}")
+def delete_api_key(key_id: int, user=Depends(get_current_user)):
+    import api_keys
+    if not api_keys.revoke_key(user["id"], key_id):
+        raise HTTPException(404, "API key not found")
+    return {"deleted": True}
+
+# ── OIDC / SSO login ─────────────────────────────────────────────────────
+
+@app.get("/auth/oidc/status")
+def oidc_status():
+    import oidc as oidc_mod
+    return {"enabled": oidc_mod.OIDC_ENABLED, "providers": oidc_mod.list_providers()}
+
+
+@app.get("/auth/oidc/login")
+async def oidc_login(provider: str, invite: Optional[str] = None, client: str = "web"):
+    """Redirect the browser to the given provider's authorize URL.
+    `provider` is one of the keys returned by /auth/oidc/status. `invite`
+    is only required the first time a given SSO identity logs in (see
+    oidc.find_or_create_user) -- pass it as ?invite=CODE, otherwise omit.
+    `client` is "web" (default) or "android" -- the Android app passes
+    client=android so the callback below knows to hand the token back via
+    its deep link instead of a URL fragment."""
+    import oidc as oidc_mod
+    if client not in ("web", "android"):
+        raise HTTPException(400, "client must be 'web' or 'android'")
+    try:
+        url = await oidc_mod.start_login(provider, invite or "", client)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    return RedirectResponse(url)
+
+
+# Custom scheme the Android app registers an intent-filter for (see
+# android/app/src/main/AndroidManifest.xml) -- matches its applicationId
+# so it can't collide with another app's deep link.
+ANDROID_OIDC_REDIRECT = "com.butler.music://oidc-callback"
+
+
+async def _handle_oidc_callback(code, state, error, extra=None) -> RedirectResponse:
+    """Shared by both the GET and POST callback routes below -- which
+    provider a callback belongs to (and whether it was the web app or the
+    Android app that started it) is looked up from the state value, not
+    the URL, so only one redirect URI needs registering with each
+    provider's console regardless of how many are enabled or which client
+    started the flow. No auth dependency -- this is an unauthenticated
+    browser redirect. On success, hands the Butler JWT back either via a
+    URL fragment (web -- `#oidc_token=...`, never sent to the server or
+    logged) or the Android app's deep link (`?token=...` there instead,
+    since a custom-scheme intent has no separate browser history to leak
+    into)."""
+    import oidc as oidc_mod
+    from urllib.parse import quote
+
+    def fail(msg: str, client: str = "web") -> RedirectResponse:
+        if client == "android":
+            return RedirectResponse(f"{ANDROID_OIDC_REDIRECT}?error={quote(msg)}", status_code=302)
+        return RedirectResponse(f"/?oidc_error={quote(msg)}", status_code=302)
+
+    if error:
+        return fail(f"Provider returned: {error}")
+    if not code or not state:
+        return fail("Missing code from provider")
+
+    consumed = oidc_mod.consume_state(state)
+    if not consumed:
+        return fail("Login link expired -- please try again")
+    provider_key, code_verifier, invite_code, client = consumed
+
+    try:
+        claims = await oidc_mod.exchange_and_verify(provider_key, code, code_verifier, extra)
+        user = oidc_mod.find_or_create_user(claims, invite_code)
+    except Exception as e:
+        return fail(str(e), client)
+
+    butler_token = create_token(user["id"])
+    if client == "android":
+        return RedirectResponse(f"{ANDROID_OIDC_REDIRECT}?token={quote(butler_token)}", status_code=302)
+    return RedirectResponse(f"/#oidc_token={quote(butler_token)}", status_code=302)
+
+
+@app.get("/auth/oidc/callback")
+async def oidc_callback_get(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+):
+    """Where Google/Authelia/any generic OIDC provider redirects back
+    (standard query-string GET redirect)."""
+    return await _handle_oidc_callback(code, state, error)
+
+
+@app.post("/auth/oidc/callback")
+async def oidc_callback_post(request: Request):
+    """Apple specifically requires response_mode=form_post whenever the
+    name/email scopes are requested, so its callback arrives as a POST
+    with a form body instead of GET query params -- same handling,
+    different place to read code/state/error from. Apple also includes
+    a one-time-only `user` field here (JSON string with the person's
+    real name) on the very first authorization ever for a given account;
+    every login after that omits it, so it's opportunistic, not relied on."""
+    import json
+    form = await request.form()
+    code = form.get("code")
+    state = form.get("state")
+    error = form.get("error")
+    extra = {}
+    user_json = form.get("user")
+    if user_json:
+        try:
+            user_obj = json.loads(user_json)
+            name_obj = user_obj.get("name") or {}
+            full_name = " ".join(filter(None, [name_obj.get("firstName"), name_obj.get("lastName")]))
+            if full_name:
+                extra["name"] = full_name
+        except Exception:
+            pass
+    return await _handle_oidc_callback(code, state, error, extra)
+
 
 # ── Invite codes (admin only) ─────────────────────────────────────────────────
 
@@ -156,13 +306,18 @@ def delete_invite(code: str, user=Depends(get_current_user)):
 @app.get("/admin/settings")
 def get_admin_settings(user=Depends(get_current_user)):
     if user["id"] != 1: raise HTTPException(403, "Admin only")
-    return {"lossless_downloads": settings.get_bool_setting("lossless_downloads")}
+    return {
+        "lossless_downloads": settings.get_bool_setting("lossless_downloads"),
+        "ytdlp_downloads_enabled": settings.get_bool_setting("ytdlp_downloads_enabled"),
+    }
 
 @app.post("/admin/settings")
 def update_admin_settings(body: dict, user=Depends(get_current_user)):
     if user["id"] != 1: raise HTTPException(403, "Admin only")
     if "lossless_downloads" in body:
         settings.set_setting("lossless_downloads", "1" if body["lossless_downloads"] else "0")
+    if "ytdlp_downloads_enabled" in body:
+        settings.set_setting("ytdlp_downloads_enabled", "1" if body["ytdlp_downloads_enabled"] else "0")
     return {"ok": True}
 
 @app.post("/admin/scan-uploads")
@@ -185,7 +340,12 @@ def search(q: str, user=Depends(get_current_user)):
     db.close()
     local_meta = [r for r in search_local(q, 10) if r["title"].lower() not in downloaded_titles]
     yt_results = []
-    if len(downloaded) + len(local_meta) < 5:
+    # Reaching out to YouTube here is what surfaces songs that aren't in
+    # the library yet -- when automatic downloads are off, showing those
+    # is actively misleading (they'd 503 the moment you tried to play
+    # one), so search stays local-only: what's already downloaded plus
+    # anything in the local metadata catalog, nothing fetched live.
+    if len(downloaded) + len(local_meta) < 5 and settings.get_bool_setting("ytdlp_downloads_enabled"):
         yt_raw = search_youtube(q, max_results=8)
         known = downloaded_titles | {r["title"].lower() for r in local_meta}
         for r in yt_raw:

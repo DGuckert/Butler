@@ -194,11 +194,29 @@ def local_file_path(youtube_id: str) -> str:
             return os.path.join(MUSIC_DIR, f)
     return path  # doesn't exist yet -- caller's existence check will catch that
 
+class DownloadsDisabledError(RuntimeError):
+    """Raised by ensure_downloaded when the admin has turned off automatic
+    yt-dlp downloads and the requested song isn't already local. Callers
+    that await this directly (like the Subsonic stream handler) can catch
+    it specifically to return a clean, honest error instead of a generic
+    500; fire-and-forget callers (asyncio.create_task) just let it fail
+    quietly, same as any other download failure they don't currently
+    handle."""
+    pass
+
+
 async def ensure_downloaded(youtube_id: str) -> str:
     existing = local_file_path(youtube_id)
     if os.path.exists(existing):
         _mark_downloaded(youtube_id, None)
         return existing
+
+    from settings import get_bool_setting
+    if not get_bool_setting("ytdlp_downloads_enabled"):
+        raise DownloadsDisabledError(
+            "Automatic downloads are disabled by the server admin, and this song isn't downloaded yet."
+        )
+
     if youtube_id in _downloading:
         while youtube_id in _downloading:
             await asyncio.sleep(0.5)
