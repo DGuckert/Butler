@@ -36,6 +36,8 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 #auth-error{color:var(--danger);font-size:12px;height:16px}
 #auth-toggle{color:var(--muted);font-size:12px;margin-top:6px}
 #auth-toggle a{color:var(--text);cursor:pointer;text-decoration:underline}
+.sso-divider{color:var(--muted);font-size:11px;width:300px;text-align:center;display:flex;align-items:center;gap:10px;margin:6px 0}
+.sso-divider::before,.sso-divider::after{content:'';flex:1;height:1px;background:var(--bg4)}
 
 /* ── App shell ── */
 #app{display:none;height:100vh;height:100dvh;flex-direction:column}
@@ -355,6 +357,9 @@ body.player-idle #player{display:none}
   <input id="au-pass" type="password" placeholder="Password">
   <input id="au-invite" type="text" placeholder="Invite code" style="display:none" autocomplete="off">
   <div id="auth-error"></div>
+  <div id="sso-divider" class="sso-divider" style="display:none">or</div>
+  <input id="sso-invite" type="text" placeholder="Invite code (first SSO sign-in only)" style="display:none" autocomplete="off">
+  <div id="sso-buttons" style="display:flex;flex-direction:column;gap:8px;width:300px"></div>
   <button class="btn btn-green" id="au-btn">Log In</button>
   <div id="auth-toggle">No account? <a id="au-switch">Sign up</a></div>
 </div>
@@ -401,6 +406,7 @@ body.player-idle #player{display:none}
             <div id="user-dropdown">
               <div class="dd-item" id="dd-admin" style="display:none">Family / Admin</div>
               <div class="dd-item" id="dd-passwd">Change password</div>
+              <div class="dd-item" id="dd-apikeys">API keys</div>
               <div class="dd-item" id="dd-scrobble">Scrobbling</div>
               <div class="dd-item" id="dd-kbd">Keyboard shortcuts</div>
               <hr class="ci-sep">
@@ -570,6 +576,29 @@ body.player-idle #player{display:none}
   </div>
 </div>
 
+<div id="apikeys-modal" class="modal-bg" style="display:none">
+  <div class="modal">
+    <h3>API Keys</h3>
+    <p style="color:var(--muted);font-size:12.5px;margin-bottom:12px">
+      Use a key as the password in a third-party Subsonic app (DSub, Symfonium, etc.) or any client that only supports username/password — handy if you sign in here with SSO and have no regular password to give those apps. Your username stays the same.
+    </p>
+    <div id="apikeys-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:200px;overflow-y:auto"></div>
+    <div id="apikeys-new-wrap" style="display:none;background:var(--bg2);border-radius:8px;padding:10px;margin-bottom:14px">
+      <div style="color:var(--muted);font-size:11px;margin-bottom:6px">Copy this now — it won't be shown again:</div>
+      <div style="display:flex;gap:6px">
+        <input id="apikeys-new-value" readonly onclick="this.select()" style="flex:1;font-family:monospace;font-size:12px;min-width:0">
+        <button class="btn btn-outline btn-sm" id="apikeys-copy-btn" type="button">Copy</button>
+      </div>
+    </div>
+    <input id="apikeys-label" type="text" placeholder="Label (e.g. \"DSub on my phone\")">
+    <div id="apikeys-err" style="color:var(--danger);font-size:12px;margin-bottom:10px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline btn-sm" id="apikeys-close">Close</button>
+      <button class="btn btn-green" id="apikeys-create-btn">Generate key</button>
+    </div>
+  </div>
+</div>
+
 <div id="scrobble-modal" class="modal-bg" style="display:none">
   <div class="modal">
     <h3>Scrobbling</h3>
@@ -711,6 +740,48 @@ document.getElementById('au-btn').onclick=async()=>{
 };
 ['au-user','au-pass','au-invite'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&document.getElementById('au-btn').click()));
 
+// ── SSO ──────────────────────────────────────────────────────────────
+(async()=>{
+  try{
+    const st=await fetch(BASE+'/auth/oidc/status').then(r=>r.json());
+    if(st.enabled && st.providers && st.providers.length){
+      const wrap=document.getElementById('sso-buttons');
+      st.providers.forEach(p=>{
+        const btn=document.createElement('button');
+        btn.className='btn btn-outline';
+        btn.style.width='100%';
+        btn.textContent=p.display_name||('Sign in with '+p.key);
+        btn.onclick=()=>{
+          const inv=document.getElementById('sso-invite').value.trim();
+          const params=new URLSearchParams({provider:p.key});
+          if(inv) params.set('invite',inv);
+          location.href=BASE+'/auth/oidc/login?'+params.toString();
+        };
+        wrap.appendChild(btn);
+      });
+      document.getElementById('sso-divider').style.display='flex';
+    }
+  }catch(e){}
+})();
+
+// Pick up the result of an SSO redirect: either a token in the URL
+// fragment (never sent to the server/logs) or an error in the query string.
+(()=>{
+  const hash=location.hash;
+  if(hash.startsWith('#oidc_token=')){
+    token=decodeURIComponent(hash.slice('#oidc_token='.length));
+    localStorage.setItem('bt',token);
+    history.replaceState(null,'',location.pathname);
+  }
+  const params=new URLSearchParams(location.search);
+  const oidcErr=params.get('oidc_error');
+  if(oidcErr){
+    document.getElementById('auth-error').textContent=oidcErr;
+    document.getElementById('sso-invite').style.display='block';
+    history.replaceState(null,'',location.pathname);
+  }
+})();
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot(){
   if(!token)return;
@@ -806,6 +877,81 @@ document.getElementById('pw-confirm-btn').onclick=async()=>{
     ['pw-current','pw-new','pw-confirm'].forEach(id=>document.getElementById(id).value='');
     toast('Password updated');
   }catch(e){err.textContent=e.message}
+};
+
+document.getElementById('dd-apikeys').onclick=()=>{
+  document.getElementById('user-dropdown').classList.remove('open');
+  openApiKeysModal();
+};
+document.getElementById('apikeys-close').onclick=()=>{
+  document.getElementById('apikeys-modal').style.display='none';
+  document.getElementById('apikeys-new-wrap').style.display='none';
+  document.getElementById('apikeys-label').value='';
+  document.getElementById('apikeys-err').textContent='';
+};
+document.getElementById('apikeys-copy-btn').onclick=async()=>{
+  const field=document.getElementById('apikeys-new-value');
+  const val=field.value;
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(val);
+    }else{
+      // Fallback for non-HTTPS/older mobile browser contexts where the
+      // Clipboard API is unavailable -- select-and-execCommand still
+      // works almost everywhere the modern API doesn't.
+      field.removeAttribute('readonly');
+      field.select();
+      field.setSelectionRange(0,val.length);
+      document.execCommand('copy');
+      field.setAttribute('readonly','');
+    }
+    toast('Copied to clipboard');
+  }catch(e){
+    field.select();
+    toast('Could not auto-copy — selected for you, copy manually');
+  }
+};
+async function openApiKeysModal(){
+  document.getElementById('apikeys-modal').style.display='flex';
+  document.getElementById('apikeys-new-wrap').style.display='none';
+  await refreshApiKeysList();
+}
+async function refreshApiKeysList(){
+  const list=document.getElementById('apikeys-list');
+  list.innerHTML='<div style="color:var(--muted);font-size:12.5px">Loading…</div>';
+  try{
+    const res=await api('GET','/auth/api-keys');
+    const keys=res.keys||[];
+    list.innerHTML = keys.length ? '' : '<div style="color:var(--muted);font-size:12.5px">No API keys yet.</div>';
+    keys.forEach(k=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:8px;padding:8px 10px';
+      const used = k.last_used_at ? `last used ${new Date(k.last_used_at).toLocaleDateString()}` : 'never used';
+      row.innerHTML = `<div><div style="font-weight:600;font-size:13px">${k.label}</div><div style="color:var(--muted);font-size:11px">${k.key_prefix}… · ${used}</div></div>`;
+      const del=document.createElement('button');
+      del.className='btn btn-outline btn-sm';
+      del.textContent='Revoke';
+      del.onclick=async()=>{
+        try{ await api('DELETE','/auth/api-keys/'+k.id); await refreshApiKeysList(); toast('Key revoked'); }
+        catch(e){ toast('Failed to revoke: '+e.message); }
+      };
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }catch(e){
+    list.innerHTML='<div style="color:var(--danger);font-size:12.5px">Failed to load keys</div>';
+  }
+}
+document.getElementById('apikeys-create-btn').onclick=async()=>{
+  const err=document.getElementById('apikeys-err'); err.textContent='';
+  const label=document.getElementById('apikeys-label').value.trim();
+  try{
+    const res=await api('POST','/auth/api-keys',{label});
+    document.getElementById('apikeys-new-wrap').style.display='block';
+    document.getElementById('apikeys-new-value').value=res.key;
+    document.getElementById('apikeys-label').value='';
+    await refreshApiKeysList();
+  }catch(e){ err.textContent=e.message }
 };
 
 // Rename playlist
@@ -1119,6 +1265,13 @@ async function renderAdmin(c){
             <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Keep the original downloaded audio format (usually Opus or AAC) instead of transcoding every song to mp3. Applies to songs downloaded from now on — existing mp3 files aren't affected.</div>
           </span>
         </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-top:16px">
+          <input type="checkbox" id="settings-ytdlp" ${settingsRes.ytdlp_downloads_enabled?'checked':''} style="width:auto;margin-top:2px" onchange="updateYtdlpSetting(this.checked)">
+          <span>
+            <div style="font-weight:600">Automatic downloads</div>
+            <div style="color:var(--muted);font-size:12.5px;margin-top:2px">Fetch new songs via yt-dlp on play/search when they're not already in the library. Turn off to freeze the library to what's already downloaded or manually uploaded — playback of existing songs isn't affected either way.</div>
+          </span>
+        </label>
         <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--bg4);display:flex;align-items:center;justify-content:space-between;gap:12px">
           <span>
             <div style="font-weight:600">Manual uploads</div>
@@ -1142,6 +1295,12 @@ async function updateLosslessSetting(checked){
   try{
     await api('POST','/admin/settings',{lossless_downloads:checked});
     toast(checked?'Lossless downloads enabled':'Lossless downloads disabled');
+  }catch(e){toast('Failed to update: '+e.message)}
+}
+async function updateYtdlpSetting(checked){
+  try{
+    await api('POST','/admin/settings',{ytdlp_downloads_enabled:checked});
+    toast(checked?'Automatic downloads enabled':'Automatic downloads disabled');
   }catch(e){toast('Failed to update: '+e.message)}
 }
 async function delUser(id,name){if(!confirm(`Remove ${name}?`))return;await api('DELETE',`/admin/users/${id}`);nav('admin')}
@@ -1642,6 +1801,7 @@ document.addEventListener('keydown',e=>{
 document.getElementById('spotify-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('spotify-modal'))document.getElementById('spotify-modal').style.display='none'});
 document.getElementById('pl-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('pl-modal'))document.getElementById('pl-modal').style.display='none'});
 document.getElementById('passwd-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('passwd-modal'))document.getElementById('passwd-modal').style.display='none'});
+document.getElementById('apikeys-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('apikeys-modal'))document.getElementById('apikeys-close').click()});
 document.getElementById('rename-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('rename-modal'))document.getElementById('rename-modal').style.display='none'});
 document.getElementById('spotify-import-btn').onclick=()=>nav('spotify-import');
 
