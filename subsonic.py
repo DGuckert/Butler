@@ -42,16 +42,40 @@ API_VERSION = "1.16.1"
 
 
 def _ok(**data):
-    resp = {"status": "ok", "version": API_VERSION, "type": "butler", "serverVersion": "1.0.0"}
+    # openSubsonic is mandatory, not decorative -- OpenSubsonic-aware
+    # clients (Substreamer, Symfonium, ...) use it to decide whether to
+    # trust extended features at all. Without it, a client can fall back
+    # to a much more conservative plain-Subsonic feature set, which is
+    # very likely why playlists (an area OpenSubsonic clients often gate
+    # behind capability detection) looked broken before this was added.
+    resp = {"status": "ok", "version": API_VERSION, "type": "butler", "serverVersion": "1.0.0", "openSubsonic": True}
     resp.update(data)
     return JSONResponse({"subsonic-response": resp})
 
 
 def _fail(code: int, message: str):
     return JSONResponse({"subsonic-response": {
-        "status": "failed", "version": API_VERSION, "type": "butler", "serverVersion": "1.0.0",
+        "status": "failed", "version": API_VERSION, "type": "butler", "serverVersion": "1.0.0", "openSubsonic": True,
         "error": {"code": code, "message": message},
     }})
+
+
+@router.api_route("/getOpenSubsonicExtensions.view", methods=["GET", "POST", "HEAD"])
+async def get_open_subsonic_extensions(request: Request):
+    """OpenSubsonic-aware clients call this early on to decide what
+    extended functionality they can rely on. Only advertise what's
+    genuinely implemented to spec -- songLyrics is (see
+    getLyricsBySongId above). Butler's API keys are NOT the same thing as
+    the real apiKeyAuthentication extension (that means a top-level
+    apiKey= query param plus a tokenInfo.view endpoint, neither of which
+    exist here -- ours works as a password substitute instead), so it's
+    deliberately not claimed here even though it might look related."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(openSubsonicExtensions=[
+        {"name": "songLyrics", "versions": [1]},
+    ])
 
 
 def _artist_id(artist: str) -> str:
@@ -104,10 +128,20 @@ async def _authenticate(request: Request):
     db = get_db()
     row = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
     db.close()
-    if not row or not verify_password(password, row["password_hash"]):
-        return None, _fail(40, "Wrong username or password.")
+    if row and verify_password(password, row["password_hash"]):
+        return dict(row), params
 
-    return dict(row), params
+    # Password didn't match a real local password -- try it as an API key
+    # instead. This is what lets an SSO-only account (whose real
+    # password_hash is a locked, unusable random value) still authenticate
+    # third-party Subsonic clients: generate a key in account settings, use
+    # it as the "password" here exactly like a normal one.
+    import api_keys
+    key_user = api_keys.find_user_by_key(password)
+    if key_user and key_user["username"] == username:
+        return key_user, params
+
+    return None, _fail(40, "Wrong username or password.")
 
 
 def _song_child(row) -> dict:
@@ -423,6 +457,343 @@ async def get_cover_art(request: Request):
         raise HTTPException(404, "Could not fetch cover art")
 
 
+def _albumlist_child(r) -> dict:
+    return {
+        "id": _album_id(r["artist"], r["album"]),
+        "name": _album_display_name(r["album"]),
+        "artist": r["artist"] or "Unknown",
+        "artistId": _artist_id(r["artist"]),
+        "songCount": r["song_count"],
+        "duration": r["duration"] or 0,
+        "created": r["created"],
+        "coverArt": None,
+    }
+
+
+@router.api_route("/getAlbumList2.view", methods=["GET", "POST", "HEAD"])
+async def get_album_list2(request: Request):
+    """The ID3-tag browsing scheme's album list -- what most modern clients'
+    "Albums" tab actually calls (getArtists/getArtist only covers browsing
+    by artist). Butler has no albums table, only songs grouped by
+    (artist, album), so every list type here is a GROUP BY over songs
+    rather than a real table scan.
+
+    byYear/byGenre aren't supported (Butler doesn't track either) and
+    fall back to alphabeticalByName rather than erroring -- a client
+    asking for a year range it can't get still gets *something* browsable
+    instead of a dead tab."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    list_type = (params.get("type") or "alphabeticalByName").strip()
+    try:
+        size = max(1, min(int(params.get("size", 20)), 500))
+    except ValueError:
+        size = 20
+    try:
+        offset = max(0, int(params.get("offset", 0)))
+    except ValueError:
+        offset = 0
+
+    db = get_db()
+    if list_type in ("frequent", "recent"):
+        order_col = "total_plays" if list_type == "frequent" else "last_played"
+        rows = db.execute(f"""
+            SELECT s.artist, s.album, COUNT(*) song_count, SUM(s.duration) duration,
+                   MAX(s.added_at) created, SUM(ph.play_count) total_plays, MAX(ph.last_played) last_played
+            FROM songs s
+            JOIN (
+                SELECT song_id, COUNT(*) play_count, MAX(played_at) last_played
+                FROM play_history WHERE user_id=? GROUP BY song_id
+            ) ph ON ph.song_id = s.id
+            WHERE s.downloaded=1
+            GROUP BY LOWER(s.artist), LOWER(COALESCE(s.album,''))
+            ORDER BY {order_col} DESC
+            LIMIT ? OFFSET ?
+        """, (user["id"], size, offset)).fetchall()
+    elif list_type == "starred":
+        rows = db.execute("""
+            SELECT s.artist, s.album, COUNT(*) song_count, SUM(s.duration) duration, MAX(s.added_at) created
+            FROM songs s JOIN liked_songs ls ON ls.song_id=s.id
+            WHERE s.downloaded=1 AND ls.user_id=?
+            GROUP BY LOWER(s.artist), LOWER(COALESCE(s.album,''))
+            ORDER BY LOWER(s.album)
+            LIMIT ? OFFSET ?
+        """, (user["id"], size, offset)).fetchall()
+    else:
+        order = {
+            "newest": "created DESC",
+            "random": "RANDOM()",
+            "alphabeticalByArtist": "LOWER(artist), LOWER(album)",
+        }.get(list_type, "LOWER(album), LOWER(artist)")
+        rows = db.execute(f"""
+            SELECT artist, album, COUNT(*) song_count, SUM(duration) duration, MAX(added_at) created
+            FROM songs WHERE downloaded=1
+            GROUP BY LOWER(artist), LOWER(COALESCE(album,''))
+            ORDER BY {order}
+            LIMIT ? OFFSET ?
+        """, (size, offset)).fetchall()
+    db.close()
+
+    albums = [_albumlist_child(r) for r in rows]
+    return _ok(albumList2={"album": albums})
+
+
+@router.api_route("/getRandomSongs.view", methods=["GET", "POST", "HEAD"])
+async def get_random_songs(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    try:
+        size = max(1, min(int(params.get("size", 10)), 500))
+    except ValueError:
+        size = 10
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM songs WHERE downloaded=1 ORDER BY RANDOM() LIMIT ?", (size,)
+    ).fetchall()
+    db.close()
+    return _ok(randomSongs={"song": [_song_child(r) for r in rows]})
+
+
+@router.api_route("/getGenres.view", methods=["GET", "POST", "HEAD"])
+async def get_genres(request: Request):
+    """Butler doesn't tag or store genre, so this is always empty --
+    returned as a valid empty list rather than omitted, since several
+    clients probe this on connect and treat a missing/erroring endpoint
+    as a broken server rather than just an empty Genres tab."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(genres={"genre": []})
+
+
+@router.api_route("/getNowPlaying.view", methods=["GET", "POST", "HEAD"])
+async def get_now_playing(request: Request):
+    """Butler doesn't track a live "currently playing" registry across
+    users -- returned empty rather than omitted, same reasoning as
+    getGenres above."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(nowPlaying={"entry": []})
+
+
+@router.api_route("/getPodcasts.view", methods=["GET", "POST", "HEAD"])
+async def get_podcasts(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(podcasts={"channel": []})
+
+
+@router.api_route("/getInternetRadioStations.view", methods=["GET", "POST", "HEAD"])
+async def get_internet_radio_stations(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(internetRadioStations={"internetRadioStation": []})
+
+
+@router.api_route("/getBookmarks.view", methods=["GET", "POST", "HEAD"])
+async def get_bookmarks(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(bookmarks={"bookmark": []})
+
+
+@router.api_route("/getShares.view", methods=["GET", "POST", "HEAD"])
+async def get_shares(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    return _ok(shares={"share": []})
+
+
+@router.api_route("/setRating.view", methods=["GET", "POST", "HEAD"])
+async def set_rating(request: Request):
+    """Subsonic's 0-5 star rating doesn't map to anything Butler stores --
+    the closest real equivalent is the like/star system already wired up
+    through star.view/unstar.view. Treated as a binary shim: any rating
+    >=1 stars the song, a rating of 0 unstars it. A client asking for a
+    3-star rating won't get a 3 back on the next fetch, but it also won't
+    error out, and the song lands in the same "liked" state a real 3-star
+    rating would have implied anyway."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    sid = params.get("id")
+    try:
+        rating = int(params.get("rating", 0))
+    except ValueError:
+        rating = 0
+    if sid:
+        db = get_db()
+        if rating >= 1:
+            db.execute("INSERT OR IGNORE INTO liked_songs (user_id, song_id) VALUES (?,?)", (user["id"], sid))
+        else:
+            db.execute("DELETE FROM liked_songs WHERE user_id=? AND song_id=?", (user["id"], sid))
+        db.commit(); db.close()
+    return _ok()
+
+
+@router.api_route("/createPlaylist.view", methods=["GET", "POST", "HEAD"])
+async def create_playlist(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    name = (params.get("name") or "New Playlist").strip()
+    song_ids = request.query_params.getlist("songId")
+    db = get_db()
+    cur = db.execute("INSERT INTO playlists (user_id, name) VALUES (?,?)", (user["id"], name))
+    pid = cur.lastrowid
+    for sid in song_ids:
+        db.execute("INSERT INTO playlist_songs (playlist_id, song_id) VALUES (?,?)", (pid, sid))
+    db.commit()
+    rows = db.execute("""
+        SELECT s.* FROM playlist_songs ps JOIN songs s ON s.id=ps.song_id
+        WHERE ps.playlist_id=? ORDER BY ps.added_at
+    """, (pid,)).fetchall()
+    db.close()
+    songs = [_song_child(r) for r in rows]
+    return _ok(playlist={
+        "id": str(pid), "name": name, "owner": user["username"], "public": False,
+        "songCount": len(songs), "duration": sum(s["duration"] for s in songs), "entry": songs,
+    })
+
+
+@router.api_route("/deletePlaylist.view", methods=["GET", "POST", "HEAD"])
+async def delete_playlist(request: Request):
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    pid = params.get("id")
+    db = get_db()
+    owned = db.execute("SELECT id FROM playlists WHERE id=? AND user_id=?", (pid, user["id"])).fetchone()
+    if not owned:
+        db.close()
+        return _fail(70, "Playlist not found.")
+    db.execute("DELETE FROM playlist_songs WHERE playlist_id=?", (pid,))
+    db.execute("DELETE FROM playlists WHERE id=?", (pid,))
+    db.commit(); db.close()
+    return _ok()
+
+
+@router.api_route("/updatePlaylist.view", methods=["GET", "POST", "HEAD"])
+async def update_playlist(request: Request):
+    """Supports renaming, appending songs (songIdToAdd), and removing by
+    index (songIndexToRemove) -- the operations DSub/Symfonium/etc.
+    actually send. Full reordering via repeated add/remove isn't
+    implemented since no mainstream client's playlist editor needs it
+    beyond these two operations."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    pid = params.get("playlistId")
+    db = get_db()
+    owned = db.execute("SELECT id FROM playlists WHERE id=? AND user_id=?", (pid, user["id"])).fetchone()
+    if not owned:
+        db.close()
+        return _fail(70, "Playlist not found.")
+
+    new_name = params.get("name")
+    if new_name:
+        db.execute("UPDATE playlists SET name=? WHERE id=?", (new_name, pid))
+
+    remove_indices = sorted(
+        (int(i) for i in request.query_params.getlist("songIndexToRemove") if i.isdigit()),
+        reverse=True,
+    )
+    if remove_indices:
+        # playlist_songs has a composite (playlist_id, song_id) primary key,
+        # not a surrogate id -- delete by that pair instead.
+        ordered = db.execute(
+            "SELECT song_id FROM playlist_songs WHERE playlist_id=? ORDER BY added_at", (pid,)
+        ).fetchall()
+        for idx in remove_indices:
+            if 0 <= idx < len(ordered):
+                db.execute(
+                    "DELETE FROM playlist_songs WHERE playlist_id=? AND song_id=?",
+                    (pid, ordered[idx]["song_id"]),
+                )
+
+    for sid in request.query_params.getlist("songIdToAdd"):
+        db.execute("INSERT INTO playlist_songs (playlist_id, song_id) VALUES (?,?)", (pid, sid))
+
+    db.commit(); db.close()
+    return _ok()
+
+
+def _parse_lrc(lrc: str) -> list:
+    """[mm:ss.xx]lyric line -> [{"start": ms, "value": "lyric line"}, ...],
+    the structured shape OpenSubsonic's getLyricsBySongId expects. A line
+    can carry more than one timestamp tag (repeated choruses sharing one
+    line of text) -- each becomes its own entry, same as the source LRC
+    intends."""
+    import re
+    entries = []
+    tag_re = re.compile(r"\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]")
+    for line in (lrc or "").splitlines():
+        tags = list(tag_re.finditer(line))
+        if not tags:
+            continue
+        text = tag_re.sub("", line).strip()
+        for m in tags:
+            minutes, seconds, frac = m.group(1), m.group(2), m.group(3) or "0"
+            frac_ms = int((frac + "000")[:3])
+            start_ms = (int(minutes) * 60 + int(seconds)) * 1000 + frac_ms
+            entries.append({"start": start_ms, "value": text})
+    entries.sort(key=lambda e: e["start"])
+    return entries
+
+
+@router.api_route("/getLyricsBySongId.view", methods=["GET", "POST", "HEAD"])
+async def get_lyrics_by_song_id(request: Request):
+    """OpenSubsonic extension -- structured, timestamped lyrics per song
+    ID, as opposed to the older getLyrics.view's plain-text artist/title
+    lookup. Butler already fetches and caches real synced lyrics (see
+    /lyrics/{youtube_id} in main.py); this just exposes that same cache
+    in the shape Subsonic clients that support synced lyrics expect,
+    rather than requiring a second lyrics fetch through a Butler-specific
+    endpoint."""
+    user, err = await _authenticate(request)
+    if not user:
+        return err
+    params = dict(request.query_params)
+    sid = params.get("id", "")
+    db = get_db()
+    song = db.execute("SELECT youtube_id, title, artist FROM songs WHERE id=?", (sid,)).fetchone()
+    if not song:
+        db.close()
+        return _fail(70, "Song not found.")
+    lyr = db.execute(
+        "SELECT plain, synced FROM lyrics WHERE youtube_id=?", (song["youtube_id"],)
+    ).fetchone()
+    db.close()
+    if not lyr or (not lyr["plain"] and not lyr["synced"]):
+        return _ok(lyricsList={"structuredLyrics": []})
+
+    result = {
+        "displayArtist": song["artist"] or "",
+        "displayTitle": song["title"] or "",
+        "lang": "und",
+    }
+    if lyr["synced"]:
+        result["synced"] = True
+        result["line"] = _parse_lrc(lyr["synced"])
+    else:
+        result["synced"] = False
+        result["line"] = [{"value": l} for l in lyr["plain"].splitlines() if l.strip()]
+    return _ok(lyricsList={"structuredLyrics": [result]})
+
+
 @router.api_route("/stream.view", methods=["GET", "POST", "HEAD"])
 @router.api_route("/download.view", methods=["GET", "POST", "HEAD"])
 async def stream(request: Request):
@@ -438,8 +809,11 @@ async def stream(request: Request):
         raise HTTPException(404, "Song not found")
     file_path = local_file_path(row["youtube_id"])
     if not os.path.exists(file_path):
-        from downloader import ensure_downloaded
-        await ensure_downloaded(row["youtube_id"])
+        from downloader import ensure_downloaded, DownloadsDisabledError
+        try:
+            await ensure_downloaded(row["youtube_id"])
+        except DownloadsDisabledError as e:
+            raise HTTPException(503, str(e))
         file_path = local_file_path(row["youtube_id"])
     if not os.path.exists(file_path):
         raise HTTPException(503, "Not downloaded yet")
