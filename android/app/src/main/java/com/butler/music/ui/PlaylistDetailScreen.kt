@@ -51,7 +51,7 @@ fun PlaylistDetailScreen(
                 current == null -> LoadingState()
                 current.songs.isEmpty() -> EmptyState("This playlist is empty.")
                 else -> LazyColumn {
-                    items(current.songs, key = { it.youtubeId }) { song ->
+                    items(current.songs.withIndex().toList(), key = { (idx, s) -> "plsong-$idx-${s.youtubeId}" }) { (_, song) ->
                         SongRow(
                             song = song,
                             onClick = { onSongClick(current.songs, song) },

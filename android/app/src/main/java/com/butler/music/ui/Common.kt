@@ -190,7 +190,7 @@ fun SongCardRow(songs: List<Song>, onClick: (Song) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        items(songs, key = { it.youtubeId }) { song ->
+        items(songs.withIndex().toList(), key = { (idx, s) -> "card-$idx-${s.youtubeId}" }) { (_, song) ->
             SongCard(song = song, onClick = { onClick(song) })
         }
     }

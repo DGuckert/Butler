@@ -61,7 +61,7 @@ fun ArtistScreen(
                         if (page.songs.isEmpty()) {
                             item { EmptyState("No tracks found for this artist yet.", icon = Icons.Filled.MusicNote) }
                         } else {
-                            items(page.songs, key = { it.youtubeId }) { song ->
+                            items(page.songs.withIndex().toList(), key = { (idx, s) -> "artistsong-$idx-${s.youtubeId}" }) { (_, song) ->
                                 SongRow(
                                     song = song,
                                     onClick = { onSongClick(page.songs, song) },

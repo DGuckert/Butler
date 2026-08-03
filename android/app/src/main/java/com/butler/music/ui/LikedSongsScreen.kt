@@ -48,7 +48,7 @@ fun LikedSongsScreen(
                     EmptyState("Songs you like will show up here.", icon = Icons.Filled.FavoriteBorder)
                 } else {
                     LazyColumn {
-                        items(state.value, key = { it.youtubeId }) { song ->
+                        items(state.value.withIndex().toList(), key = { (idx, s) -> "liked-$idx-${s.youtubeId}" }) { (_, song) ->
                             SongRow(
                                 song = song,
                                 onClick = { onSongClick(state.value, song) },

@@ -85,7 +85,7 @@ fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggle
             is LoadState.Loaded -> if (state.value.isEmpty()) {
                 item { EmptyState("No Daily Mix yet. Listen to a few songs first.") }
             } else {
-                items(state.value.drop(1), key = { it.youtubeId }) { song ->
+                items(state.value.drop(1).withIndex().toList(), key = { (idx, song) -> "dailymix-$idx-${song.youtubeId}" }) { (_, song) ->
                     SongRow(
                         song = song,
                         onClick = { onSongClick(state.value, song) },
@@ -362,7 +362,7 @@ fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<So
                 EmptyState("Nothing downloaded yet. Tap the download icon on any song to save it for offline listening.", icon = Icons.Filled.DownloadDone)
             } else {
                 LazyColumn {
-                    items(downloaded, key = { it.youtubeId }) { song ->
+                    items(downloaded.withIndex().toList(), key = { (idx, s) -> "dl-$idx-${s.youtubeId}" }) { (_, song) ->
                         SongRow(
                             song = song,
                             onClick = { onSongClick(downloaded, song) },
@@ -412,7 +412,7 @@ fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onTogg
                 )
             } else {
                 LazyColumn {
-                    items(state.value, key = { it.youtubeId }) { song ->
+                    items(state.value.withIndex().toList(), key = { (idx, s) -> "search-$idx-${s.youtubeId}" }) { (_, song) ->
                         SongRow(
                             song = song,
                             onClick = { onSongClick(state.value, song) },
