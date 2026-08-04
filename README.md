@@ -184,6 +184,12 @@ On Android, SSO opens in a Chrome Custom Tab rather than an in-app WebView (so y
 
 See `.env.example` for the full list of variables, including the exact fields Google's/each self-hosted provider's setup asks for.
 
+### API keys
+
+SSO accounts don't have a real password -- there's nothing to type into a third-party Subsonic client (DSub, Substreamer, Symfonium, etc.). Generate a personal API key from the account menu ("API keys") and use it in place of a password anywhere Butler asks for one, native login included. No client-side setup needed beyond that; most Subsonic apps have a "legacy authentication" toggle that needs to be on for this to work (Substreamer specifically requires it under Advanced options on the login screen).
+
+See [`CLIENT_API.md`](CLIENT_API.md) for the full API reference (both the native API and the Subsonic-compatible layer) if you want to build your own client.
+
 ## Android App
 
 **[Download the latest release](https://github.com/DGuckert/Butler/releases/latest)** — signed APK, ready to sideload. Point it at your own Butler server on first launch.
