@@ -1,0 +1,71 @@
+name: Publish Docker image
+
+# Publishes a multi-arch image (amd64 + arm64, so Raspberry Pi / ARM NAS boxes
+# work too) to GitHub Container Registry whenever a release tag is pushed:
+#
+#   git tag v1.2.0 && git push origin v1.2.0
+#
+# Pull requests that touch the Docker build only *build* the image (no push),
+# so a broken Dockerfile or requirements change is caught before it's merged.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - requirements.txt
+      - .dockerignore
+      - .github/workflows/docker-publish.yml
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/butler
+
+jobs:
+  docker:
+    name: Build and push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io with the built-in GITHUB_TOKEN; no extra secrets
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          # v1.2.3 -> 1.2.3, 1.2, 1 and latest. Pre-release tags like
+          # v1.2.3-beta.1 get only their exact version, never latest/1/1.2.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+            type=sha,prefix=sha-,enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # PR builds only verify the image builds (amd64); releases ship both.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

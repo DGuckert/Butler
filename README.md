@@ -80,6 +80,33 @@ A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it int
 
 ### Docker (Recommended)
 
+Pre-built multi-arch images (amd64 and arm64) are published to GitHub Container Registry for every release, so there's nothing to clone or build:
+
+```yaml
+# docker-compose.yml
+services:
+  butler:
+    image: ghcr.io/dguckert/butler:latest   # or pin a release, e.g. :1.2.0
+    container_name: butler
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SECRET_KEY: change-me   # python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+    volumes:
+      - butler_data:/data
+volumes:
+  butler_data:
+```
+
+```bash
+docker compose up -d
+```
+
+The same image works anywhere that pulls from a registry (Portainer stacks, Kubernetes, `docker run`). Tags: `latest` (newest stable release), `1.2.0` (exact), `1.2` and `1` (latest patch/minor). Updating is `docker compose pull && docker compose up -d`.
+
+Prefer to build it yourself?
+
 ```bash
 git clone https://github.com/DGuckert/Butler.git
 cd Butler
