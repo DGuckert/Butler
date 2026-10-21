@@ -1282,6 +1282,13 @@ async function renderAdmin(c){
       </div>`;
   }catch(e){c.querySelector('.view').innerHTML=`<div style="font-size:1.8rem;font-weight:800">Admin</div><div class="empty-state">${e.message}</div>`}
 }
+// YouTube frames only exist for real YouTube ids; files from the uploads folder
+// (local_*) or an in-place library (lib_*) carry their own art in s.thumbnail.
+function thumbFor(s){
+  const own=/^(lib_|local_)/.test(s.youtube_id||'');
+  if(s.youtube_id&&!own) return `https://img.youtube.com/vi/${s.youtube_id}/mqdefault.jpg`;
+  return s.thumbnail||'';
+}
 async function scanUploadsNow(){
   const btn=document.getElementById('scan-uploads-btn');
   btn.disabled=true; btn.textContent='Scanning\u2026';
@@ -1351,7 +1358,7 @@ function playAll(songs){if(!songs.length)return;queue=[...songs];qi=shuffleOn?Ma
 function cardH(s,i){
   const[c1,c2]=pal(s.artist||s.title);
   const icon=ICONS[i%ICONS.length];
-  const tUrl=s.youtube_id?`https://img.youtube.com/vi/${s.youtube_id}/mqdefault.jpg`:(s.thumbnail||'');
+  const tUrl=thumbFor(s);
   const art=tUrl
     ?`<img src="${tUrl}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="card-art-fb" style="--c1:${c1};--c2:${c2};display:none">${icon}</div>`
     :`<div class="card-art-fb" style="--c1:${c1};--c2:${c2}">${icon}</div>`;
@@ -1528,7 +1535,7 @@ async function playSong(song){
   document.getElementById('now-title').textContent=song.title;
   document.getElementById('now-artist').textContent=song.artist||'';
   const art=document.getElementById('now-art');
-  const th=song.youtube_id?`https://img.youtube.com/vi/${song.youtube_id}/mqdefault.jpg`:(song.thumbnail||'');
+  const th=thumbFor(song);
   if(th){art.src=th;art.style.display='block'}else{art.style.display='none'}
   document.getElementById('np-title').textContent=song.title;
   document.getElementById('np-artist').textContent=song.artist||'';

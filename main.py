@@ -12,10 +12,11 @@ from pydantic import BaseModel
 from typing import Optional
 from database import init_db, get_db
 from auth import hash_password, verify_password, create_token, get_current_user, require_admin
-from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match, local_file_path
+from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match, local_file_path, is_library_song
 from songs_db import search_local, add_track
 from recommend import get_recommendations, get_discovery, get_artist_tracks
-from config import MUSIC_DIR
+from config import MUSIC_DIR, LIBRARY_DIR, LIBRARY_SCAN_INTERVAL_SECONDS
+import library as library_index  # (main.py already has a /library route function named `library`)
 from album_art import find_album_art
 from artist_info import fetch_artist_info
 import scrobbling
@@ -41,6 +42,24 @@ async def _periodic_upload_scan():
             except Exception as e:
                 print(f"[manual_uploads] scan failed: {e}")
             await asyncio.sleep(_UPLOAD_SCAN_INTERVAL_SECONDS)
+    asyncio.create_task(_loop())
+
+@app.on_event("startup")
+async def _periodic_library_scan():
+    """Incremental scan of the optional read-only LIBRARY_DIR (see library.py).
+    Runs in a worker thread: walking a big NAS share can take minutes and
+    must never block the event loop that's serving streams."""
+    if not library_index.enabled():
+        return
+    async def _loop():
+        while True:
+            try:
+                result = await asyncio.to_thread(library_index.scan_library)
+                if any(result.get(k) for k in ("added", "updated", "missing", "restored", "pruned", "failed")):
+                    print(f"[library] scan: {result}")
+            except Exception as e:
+                print(f"[library] scan failed: {e}")
+            await asyncio.sleep(LIBRARY_SCAN_INTERVAL_SECONDS)
     asyncio.create_task(_loop())
 
 class RegisterRequest(BaseModel):
@@ -323,7 +342,14 @@ def update_admin_settings(body: dict, user=Depends(get_current_user)):
 @app.post("/admin/scan-uploads")
 def trigger_upload_scan(user=Depends(get_current_user)):
     if user["id"] != 1: raise HTTPException(403, "Admin only")
-    return scan_uploads()
+    result = scan_uploads()
+    if library_index.enabled():
+        lib = library_index.scan_library()
+        result = {**result, "library": lib}
+        # Keep the {added, ...} shape the Scan Now button reads: fold library
+        # additions into the headline number as well.
+        result["added"] = result.get("added", 0) + lib.get("added", 0)
+    return result
     return {"deleted": True}
 
 # ── Search ────────────────────────────────────────────────────────────────────
@@ -497,6 +523,8 @@ async def play(youtube_id: str, user=Depends(get_current_user)):
     file_path = local_file_path(youtube_id)
     if os.path.exists(file_path):
         return {"status": "ready", "stream_url": f"/songs/stream/{youtube_id}", "song": song}
+    if is_library_song(youtube_id):
+        raise HTTPException(404, "This track's file is missing from the library")
     if not is_downloading(youtube_id):
         asyncio.create_task(ensure_downloaded(youtube_id))
     return {"status": "downloading", "stream_url": f"/songs/stream/{youtube_id}", "song": song}
@@ -514,16 +542,37 @@ async def resolve_song(body: dict, user=Depends(get_current_user)):
 def song_status(youtube_id: str, user=Depends(get_current_user)):
     file_path = local_file_path(youtube_id)
     if os.path.exists(file_path): return {"status": "ready", "progress": 100}
+    if is_library_song(youtube_id): return {"status": "missing", "progress": 0}
     if is_downloading(youtube_id): return {"status": "downloading", "progress": get_download_progress(youtube_id)}
     return {"status": "not_downloaded", "progress": 0}
 
 _AUDIO_CONTENT_TYPES = {
     "mp3": "audio/mpeg", "m4a": "audio/mp4", "opus": "audio/opus",
     "webm": "audio/webm", "ogg": "audio/ogg", "flac": "audio/flac", "wav": "audio/wav",
+    "aac": "audio/aac", "wma": "audio/x-ms-wma",
 }
+
+@app.get("/songs/art/{youtube_id}")
+def song_art(youtube_id: str):
+    """Cover art for a library track (embedded picture, or cover.jpg/folder.jpg
+    beside it). Deliberately unauthenticated like an image URL must be for an
+    <img> tag; the id is an unguessable hash of the file's path, and it only
+    ever serves cover images."""
+    db = get_db()
+    row = db.execute("SELECT library_path, album FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
+    db.close()
+    if not row or not row["library_path"]:
+        raise HTTPException(404, "No cover art")
+    cover = library_index.cover_for(row["library_path"], row["album"])
+    if not cover:
+        raise HTTPException(404, "No cover art")
+    return FileResponse(cover[0], media_type=cover[1], headers={"Cache-Control": "public, max-age=604800"})
 
 @app.get("/songs/stream/{youtube_id}")
 async def stream(youtube_id: str, user=Depends(get_current_user)):
+    if is_library_song(youtube_id) and not os.path.exists(local_file_path(youtube_id)):
+        # Nothing to wait for: library files are never downloaded.
+        raise HTTPException(404, "This track's file is missing from the library")
     for _ in range(240):
         file_path = local_file_path(youtube_id)
         if os.path.exists(file_path):
@@ -545,6 +594,12 @@ def delete_song(youtube_id: str, user=Depends(require_admin)):
     song = db.execute("SELECT * FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
     if not song: db.close(); raise HTTPException(404, "Not found")
     song = dict(song)
+    if song.get("library_path"):
+        # Tracks indexed from LIBRARY_DIR belong to the source library, which
+        # Butler treats as strictly read-only. Remove the file at the source
+        # and the next scan drops it from Butler automatically.
+        db.close()
+        raise HTTPException(409, "This track lives in your read-only library. Remove it from the source library; Butler will drop it on the next scan.")
     path = local_file_path(youtube_id)
     if os.path.exists(path): os.remove(path)
     for tbl in ["liked_songs","play_history","playlist_songs"]:
@@ -560,7 +615,8 @@ def library(user=Depends(get_current_user),
             downloaded_only: bool = False):
     db = get_db()
     order = {"date":"added_at DESC","title":"title ASC","artist":"artist ASC"}[sort]
-    where = "WHERE downloaded=1" if downloaded_only else ""
+    # Library tracks whose file vanished are hidden, not deleted (see library.py).
+    where = "WHERE downloaded=1" if downloaded_only else "WHERE library_missing_since IS NULL"
     songs = db.execute(f"SELECT * FROM songs {where} ORDER BY {order}").fetchall()
     db.close()
     return {"songs": [dict(s) for s in songs]}

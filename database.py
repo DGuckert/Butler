@@ -158,10 +158,20 @@ def init_db():
         ("thumbnail", "TEXT"),
         ("shared", "INTEGER DEFAULT 0"),
         ("file_ext", "TEXT DEFAULT 'mp3'"),
+        # In-place library indexing (library.py). library_path is relative to
+        # LIBRARY_DIR so the mount can move without re-indexing everything.
+        ("album_artist", "TEXT"),
+        ("track_number", "INTEGER"),
+        ("disc_number", "INTEGER"),
+        ("library_path", "TEXT"),
+        ("library_mtime_ns", "INTEGER"),
+        ("library_size", "INTEGER"),
+        ("library_missing_since", "TIMESTAMP"),
     ]:
         try:
             c.execute(f"ALTER TABLE songs ADD COLUMN {col} {typedef}")
         except: pass
+    c.execute("CREATE INDEX IF NOT EXISTS idx_songs_library_path ON songs(library_path)")
     try:
         c.execute("ALTER TABLE playlists ADD COLUMN shared INTEGER DEFAULT 0")
     except: pass

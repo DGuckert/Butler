@@ -80,6 +80,33 @@ A self-hosted Spotify alternative. Download music with `yt-dlp`, organize it int
 
 ### Docker (Recommended)
 
+Pre-built multi-arch images (amd64 and arm64) are published to GitHub Container Registry for every release, so there's nothing to clone or build:
+
+```yaml
+# docker-compose.yml
+services:
+  butler:
+    image: ghcr.io/dguckert/butler:latest   # or pin a release, e.g. :1.2.0
+    container_name: butler
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SECRET_KEY: change-me   # python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+    volumes:
+      - butler_data:/data
+volumes:
+  butler_data:
+```
+
+```bash
+docker compose up -d
+```
+
+The same image works anywhere that pulls from a registry (Portainer stacks, Kubernetes, `docker run`). Tags: `latest` (newest stable release), `1.2.0` (exact), `1.2` and `1` (latest patch/minor). Updating is `docker compose pull && docker compose up -d`.
+
+Prefer to build it yourself?
+
 ```bash
 git clone https://github.com/DGuckert/Butler.git
 cd Butler
@@ -143,6 +170,26 @@ A couple of settings are runtime-toggleable from the admin panel instead of `.en
 Drop files into `uploads/` (any of mp3, m4a, flac, opus, ogg, wav, aac). Butler scans automatically every few minutes, reading embedded tags or parsing "Artist - Title.ext" filenames.
 
 Admins can also trigger immediate scan from **Family/Admin → Scan Now**.
+
+### Existing Music Library (index in place)
+
+Already have a library organized by artist/album (Lidarr, beets, a NAS share)? Point Butler at it instead of copying it into `uploads/` -- no second copy, no extra storage:
+
+```yaml
+# docker-compose.yml
+environment:
+  LIBRARY_DIR: /library
+volumes:
+  - /mnt/data/media/music:/library:ro   # your existing library, read-only
+  - butler_data:/data                   # Butler's own database, covers, downloads
+```
+
+- **Read-only by design.** Butler only ever reads from `LIBRARY_DIR`; it never writes, moves, renames, re-tags or deletes anything there (deleting a library track from Butler is refused -- remove it at the source and the next scan drops it). The mount can be `:ro`.
+- **Your layout is untouched.** Files are streamed from where they are, with your folder structure and filenames as-is.
+- **Tags are read, not guessed.** Title, artist, album, album artist, track and disc number, and duration come from embedded tags (untagged files fall back to the `Artist/Album/NN - Title.ext` layout). Compilations group under their album artist.
+- **Cover art** comes from the embedded picture (extracted once per album into Butler's own `/data/covers`) or a `cover.jpg`/`folder.jpg` next to the tracks.
+- **Incremental rescans** every 15 minutes (`LIBRARY_SCAN_INTERVAL_SECONDS`), or **Scan Now**: new files are added, edited ones re-read, vanished ones hidden. A renamed or upgraded file (Lidarr does this a lot) is matched back to its old track so likes, history and playlists survive. If the share is unmounted or unreadable, Butler assumes a hiccup and removes nothing. Tracks gone for more than `LIBRARY_PRUNE_DAYS` (default 30) are forgotten from Butler's database only.
+- Coexists with everything else: yt-dlp downloads and the `uploads/` folder keep working, and a library track is never re-downloaded.
 
 ### Offline Download (Android)
 

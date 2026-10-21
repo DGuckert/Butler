@@ -12,6 +12,7 @@ venv/
 *.bak.*
 status.md
 android/
+desktop/
 Dockerfile
 docker-compose.yml
 .dockerignore

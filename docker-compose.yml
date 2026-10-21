@@ -16,12 +16,19 @@ services:
       DATABASE_URL: /data/butler.db
       SONGS_DB_PATH: /data/songs_meta.db
       UPLOADS_DIR: /data/uploads
+      # Optional: index and stream an existing library in place (see README,
+      # "Existing Music Library"). Uncomment together with the volume below.
+      # LIBRARY_DIR: /library
     volumes:
       - butler_data:/data
       # A real host folder (not just the named volume) so it's easy to drop
       # files in from outside Docker -- over SMB/NAS, scp, a file manager,
       # whatever's convenient -- without needing to exec into the container.
       - ./uploads:/data/uploads
+      # Optional: your existing library, mounted READ-ONLY. Butler indexes and
+      # streams from it directly -- nothing is copied, and nothing under it is
+      # ever modified or deleted. Adjust the host path, then uncomment.
+      # - /mnt/data/media/music:/library:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/"]
       interval: 30s

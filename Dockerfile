@@ -19,7 +19,8 @@ COPY . .
 RUN mkdir -p /data/music
 ENV MUSIC_DIR=/data/music \
     DATABASE_URL=/data/butler.db \
-    SONGS_DB_PATH=/data/songs_meta.db
+    SONGS_DB_PATH=/data/songs_meta.db \
+    UPLOADS_DIR=/data/uploads
 
 EXPOSE 8080
 
