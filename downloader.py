@@ -54,6 +54,8 @@ def download_song(youtube_id: str) -> str:
         # Make sure downloaded flag is set even for already-existing files
         _mark_downloaded(youtube_id, None)
         return existing
+    if is_library_song(youtube_id):
+        raise LibraryFileMissingError(f"Library file for {youtube_id} is missing; Butler never downloads over a library track")
 
     last_error = None
     for attempt in range(1, _MAX_ATTEMPTS + 1):
@@ -166,26 +168,46 @@ def _mark_downloaded(youtube_id: str, duration, artist=None, title=None, file_ex
         pass
 
 
-def _known_file_ext(youtube_id: str) -> str:
-    """The extension a song was actually saved with, so callers don't have
-    to guess/hardcode .mp3 -- lossless downloads can be .opus, .m4a, etc."""
+def _song_location(youtube_id: str):
+    """(file_ext, library_path) for a song, from the DB."""
     try:
         import sqlite3
         conn = sqlite3.connect(DATABASE_URL)
-        row = conn.execute("SELECT file_ext FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
+        row = conn.execute("SELECT file_ext, library_path FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
         conn.close()
-        if row and row[0]:
-            return row[0]
+        if row:
+            return row[0] or "mp3", row[1]
     except Exception:
         pass
-    return "mp3"
+    return "mp3", None
+
+
+def _known_file_ext(youtube_id: str) -> str:
+    """The extension a song was actually saved with, so callers don't have
+    to guess/hardcode .mp3 -- lossless downloads can be .opus, .m4a, etc."""
+    return _song_location(youtube_id)[0]
+
+
+def is_library_song(youtube_id: str) -> bool:
+    """True for tracks indexed in place from LIBRARY_DIR (see library.py).
+    Those are read-only: never downloaded, never deleted by Butler."""
+    return _song_location(youtube_id)[1] is not None
+
+
+class LibraryFileMissingError(FileNotFoundError):
+    """A library track's source file isn't there (moved, deleted, or the
+    share is unmounted). Butler never tries to re-download these."""
 
 
 def local_file_path(youtube_id: str) -> str:
     """Resolves a song's actual on-disk path regardless of format -- checks
     the known extension first, then falls back to scanning MUSIC_DIR for
     any file matching {youtube_id}.* in case the DB record is stale."""
-    ext = _known_file_ext(youtube_id)
+    ext, library_path = _song_location(youtube_id)
+    if library_path is not None:
+        import library
+        # Streamed straight from where it lives; no MUSIC_DIR fallback scan.
+        return library.resolve(library_path) or os.path.join(MUSIC_DIR, f"{youtube_id}.{ext}")
     path = os.path.join(MUSIC_DIR, f"{youtube_id}.{ext}")
     if os.path.exists(path):
         return path
@@ -210,6 +232,8 @@ async def ensure_downloaded(youtube_id: str) -> str:
     if os.path.exists(existing):
         _mark_downloaded(youtube_id, None)
         return existing
+    if is_library_song(youtube_id):
+        raise LibraryFileMissingError(f"Library file for {youtube_id} is missing; Butler never downloads over a library track")
 
     from settings import get_bool_setting
     if not get_bool_setting("ytdlp_downloads_enabled"):

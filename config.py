@@ -11,6 +11,19 @@ BASE_DIR = Path(__file__).resolve().parent
 # through to the default too, not be treated as "explicitly set to ''".
 MUSIC_DIR = os.getenv("MUSIC_DIR") or str(BASE_DIR / "music")
 UPLOADS_DIR = os.getenv("UPLOADS_DIR") or str(BASE_DIR / "uploads")
+# Optional: an existing, already-organized music library (Lidarr, beets,
+# a NAS share...) that Butler indexes and streams *in place*. Mount it
+# read-only; Butler never writes to, moves, or deletes anything under it.
+# Blank = feature off. Butler's own database, covers and downloads stay in
+# /data, completely separate from this folder.
+LIBRARY_DIR = os.getenv("LIBRARY_DIR") or ""
+LIBRARY_SCAN_INTERVAL_SECONDS = int(os.getenv("LIBRARY_SCAN_INTERVAL_SECONDS") or 900)
+# A track whose file has been gone this many days (and wasn't matched to a
+# renamed file) is dropped from Butler's DB along with its likes/history.
+# 0 = keep forever. Only ever touches Butler's database, never your files.
+LIBRARY_PRUNE_DAYS = int(os.getenv("LIBRARY_PRUNE_DAYS") or 30)
+# Where embedded cover art pulled out of library files is cached.
+COVER_CACHE_DIR = os.getenv("COVER_CACHE_DIR") or os.path.join(os.path.dirname(os.path.abspath(MUSIC_DIR)), "covers")
 SECRET_KEY = os.getenv("SECRET_KEY") or "changeme"
 DATABASE_URL = os.getenv("DATABASE_URL") or "butler.db"
 SONGS_DB_PATH = os.getenv("SONGS_DB_PATH") or str(BASE_DIR / "songs_meta.db")

@@ -2,6 +2,12 @@
 
 All notable changes to Butler are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- **Index an existing music library in place** (`LIBRARY_DIR`). Mount a Lidarr/beets/NAS library read-only and Butler streams straight from it: no copy into Butler's own storage, your folder structure and filenames untouched, nothing under it ever modified or deleted. Reads embedded title/artist/album/album artist/track/disc tags and cover art (embedded or `cover.jpg`/`folder.jpg`), rescans incrementally for new, changed and removed files, and keeps Butler's database, cover cache and downloads separate in `/data`. Renamed/upgraded files are matched back to their old track so likes and playlists survive. The copy-based `uploads/` workflow is unchanged. See README, "Existing Music Library".
+- Subsonic: `track`, `discNumber`, `albumArtist`, `path`, `size` on library songs; albums group under album artist and list tracks in disc/track order.
+
 ## [1.1.0] - 2026-08-03
 
 ### Added

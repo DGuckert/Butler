@@ -34,6 +34,7 @@ from downloader import local_file_path
 _AUDIO_CONTENT_TYPES = {
     "mp3": "audio/mpeg", "m4a": "audio/mp4", "opus": "audio/opus",
     "webm": "audio/webm", "ogg": "audio/ogg", "flac": "audio/flac", "wav": "audio/wav",
+    "aac": "audio/aac", "wma": "audio/x-ms-wma",
 }
 
 router = APIRouter(prefix="/rest")
@@ -98,6 +99,18 @@ def _decode_album_id(alid: str):
     return artist, album
 
 
+# Albums are grouped under their *album artist* when the file has one (so a
+# compilation or a "feat." track doesn't splinter an album across artists),
+# falling back to the track artist for everything else.
+_AA = "COALESCE(NULLIF(album_artist,''), artist)"
+_AA_S = "COALESCE(NULLIF(s.album_artist,''), s.artist)"
+
+
+def _aa(row) -> str:
+    keys = row.keys()
+    return ((row["album_artist"] if "album_artist" in keys else None) or row["artist"])
+
+
 def _album_display_name(album: str) -> str:
     return album if album else "Singles"
 
@@ -148,7 +161,7 @@ def _song_child(row) -> dict:
     ext = (row["file_ext"] if "file_ext" in row.keys() else None) or "mp3"
     return {
         "id": str(row["id"]),
-        "parent": _album_id(row["artist"], row["album"]),
+        "parent": _album_id(_aa(row), row["album"]),
         "isDir": False,
         "title": row["title"],
         "album": _album_display_name(row["album"]),
@@ -160,11 +173,28 @@ def _song_child(row) -> dict:
         "bitRate": 192,
         "path": f"{row['artist'] or 'Unknown'}/{row['title']}.{ext}",
         "created": row["added_at"],
-        "albumId": _album_id(row["artist"], row["album"]),
+        "albumId": _album_id(_aa(row), row["album"]),
         "artistId": _artist_id(row["artist"]),
         "type": "music",
         "isVideo": False,
+        **_library_song_extras(row),
     }
+
+
+def _library_song_extras(row) -> dict:
+    """Extra OpenSubsonic fields for tracks indexed in place from LIBRARY_DIR."""
+    keys = row.keys()
+    extras = {}
+    if "track_number" in keys and row["track_number"]:
+        extras["track"] = row["track_number"]
+    if "disc_number" in keys and row["disc_number"]:
+        extras["discNumber"] = row["disc_number"]
+    if "album_artist" in keys and row["album_artist"]:
+        extras["albumArtist"] = row["album_artist"]
+    if "library_path" in keys and row["library_path"]:
+        extras["path"] = row["library_path"].replace("\\", "/")
+        extras["size"] = row["library_size"] or 0
+    return extras
 
 
 @router.api_route("/ping.view", methods=["GET", "POST", "HEAD"])
@@ -210,10 +240,10 @@ async def get_artists(request: Request):
     if not user:
         return err
     db = get_db()
-    rows = db.execute("""
-        SELECT artist, COUNT(*) c FROM songs
+    rows = db.execute(f"""
+        SELECT {_AA} AS artist, COUNT(*) c FROM songs
         WHERE artist IS NOT NULL AND artist != '' AND downloaded=1
-        GROUP BY LOWER(artist) ORDER BY LOWER(artist)
+        GROUP BY LOWER({_AA}) ORDER BY LOWER({_AA})
     """).fetchall()
     db.close()
 
@@ -246,11 +276,11 @@ async def get_artist(request: Request):
 
     db = get_db()
     display_row = db.execute(
-        "SELECT artist FROM songs WHERE LOWER(artist)=? LIMIT 1", (artist_lower,)
+        f"SELECT {_AA} AS artist FROM songs WHERE LOWER({_AA})=? LIMIT 1", (artist_lower,)
     ).fetchone()
     display_name = display_row["artist"] if display_row else artist_lower
     rows = db.execute(
-        "SELECT DISTINCT album FROM songs WHERE LOWER(artist)=? AND downloaded=1",
+        f"SELECT DISTINCT album FROM songs WHERE LOWER({_AA})=? AND downloaded=1",
         (artist_lower,),
     ).fetchall()
     db.close()
@@ -277,17 +307,18 @@ async def get_album(request: Request):
     db = get_db()
     if album:
         rows = db.execute(
-            "SELECT * FROM songs WHERE LOWER(artist)=? AND LOWER(COALESCE(album,''))=? AND downloaded=1",
+            f"SELECT * FROM songs WHERE LOWER({_AA})=? AND LOWER(COALESCE(album,''))=? AND downloaded=1 "
+            "ORDER BY COALESCE(disc_number,1), COALESCE(track_number,9999), title",
             (artist_lower, album),
         ).fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM songs WHERE LOWER(artist)=? AND (album IS NULL OR album='') AND downloaded=1",
+            f"SELECT * FROM songs WHERE LOWER({_AA})=? AND (album IS NULL OR album='') AND downloaded=1",
             (artist_lower,),
         ).fetchall()
     db.close()
 
-    display_name = rows[0]["artist"] if rows else artist_lower
+    display_name = _aa(rows[0]) if rows else artist_lower
     songs = [_song_child(r) for r in rows]
     return _ok(album={
         "id": alid, "name": _album_display_name(album), "artist": display_name,
@@ -445,8 +476,14 @@ async def get_cover_art(request: Request):
     params = dict(request.query_params)
     cid = params.get("id", "")
     db = get_db()
-    row = db.execute("SELECT thumbnail FROM songs WHERE id=?", (cid,)).fetchone()
+    row = db.execute("SELECT thumbnail, library_path, album FROM songs WHERE id=?", (cid,)).fetchone()
     db.close()
+    if row and row["library_path"]:
+        import library
+        cover = library.cover_for(row["library_path"], row["album"])
+        if not cover:
+            raise HTTPException(404, "No cover art")
+        return FileResponse(cover[0], media_type=cover[1])
     if not row or not row["thumbnail"]:
         raise HTTPException(404, "No cover art")
     import requests as _r
@@ -466,7 +503,8 @@ def _albumlist_child(r) -> dict:
         "songCount": r["song_count"],
         "duration": r["duration"] or 0,
         "created": r["created"],
-        "coverArt": None,
+        # Any track of the album can stand in as its cover (getCoverArt takes song ids).
+        "coverArt": str(r["cover_id"]) if "cover_id" in r.keys() and r["cover_id"] else None,
     }
 
 
@@ -500,24 +538,25 @@ async def get_album_list2(request: Request):
     if list_type in ("frequent", "recent"):
         order_col = "total_plays" if list_type == "frequent" else "last_played"
         rows = db.execute(f"""
-            SELECT s.artist, s.album, COUNT(*) song_count, SUM(s.duration) duration,
-                   MAX(s.added_at) created, SUM(ph.play_count) total_plays, MAX(ph.last_played) last_played
+            SELECT {_AA_S} AS artist, s.album, COUNT(*) song_count, SUM(s.duration) duration,
+                   MIN(s.id) cover_id, MAX(s.added_at) created, SUM(ph.play_count) total_plays, MAX(ph.last_played) last_played
             FROM songs s
             JOIN (
                 SELECT song_id, COUNT(*) play_count, MAX(played_at) last_played
                 FROM play_history WHERE user_id=? GROUP BY song_id
             ) ph ON ph.song_id = s.id
             WHERE s.downloaded=1
-            GROUP BY LOWER(s.artist), LOWER(COALESCE(s.album,''))
+            GROUP BY LOWER({_AA_S}), LOWER(COALESCE(s.album,''))
             ORDER BY {order_col} DESC
             LIMIT ? OFFSET ?
         """, (user["id"], size, offset)).fetchall()
     elif list_type == "starred":
-        rows = db.execute("""
-            SELECT s.artist, s.album, COUNT(*) song_count, SUM(s.duration) duration, MAX(s.added_at) created
+        rows = db.execute(f"""
+            SELECT {_AA_S} AS artist, s.album, COUNT(*) song_count, SUM(s.duration) duration,
+                   MIN(s.id) cover_id, MAX(s.added_at) created
             FROM songs s JOIN liked_songs ls ON ls.song_id=s.id
             WHERE s.downloaded=1 AND ls.user_id=?
-            GROUP BY LOWER(s.artist), LOWER(COALESCE(s.album,''))
+            GROUP BY LOWER({_AA_S}), LOWER(COALESCE(s.album,''))
             ORDER BY LOWER(s.album)
             LIMIT ? OFFSET ?
         """, (user["id"], size, offset)).fetchall()
@@ -528,9 +567,10 @@ async def get_album_list2(request: Request):
             "alphabeticalByArtist": "LOWER(artist), LOWER(album)",
         }.get(list_type, "LOWER(album), LOWER(artist)")
         rows = db.execute(f"""
-            SELECT artist, album, COUNT(*) song_count, SUM(duration) duration, MAX(added_at) created
+            SELECT {_AA} AS artist, album, COUNT(*) song_count, SUM(duration) duration,
+                   MIN(id) cover_id, MAX(added_at) created
             FROM songs WHERE downloaded=1
-            GROUP BY LOWER(artist), LOWER(COALESCE(album,''))
+            GROUP BY LOWER({_AA}), LOWER(COALESCE(album,''))
             ORDER BY {order}
             LIMIT ? OFFSET ?
         """, (size, offset)).fetchall()
@@ -809,11 +849,13 @@ async def stream(request: Request):
         raise HTTPException(404, "Song not found")
     file_path = local_file_path(row["youtube_id"])
     if not os.path.exists(file_path):
-        from downloader import ensure_downloaded, DownloadsDisabledError
+        from downloader import ensure_downloaded, DownloadsDisabledError, LibraryFileMissingError
         try:
             await ensure_downloaded(row["youtube_id"])
         except DownloadsDisabledError as e:
             raise HTTPException(503, str(e))
+        except LibraryFileMissingError as e:
+            raise HTTPException(404, str(e))
         file_path = local_file_path(row["youtube_id"])
     if not os.path.exists(file_path):
         raise HTTPException(503, "Not downloaded yet")
